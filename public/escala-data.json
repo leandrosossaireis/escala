@@ -227,34 +227,15 @@
   ],
   "overrides": [
     {
-      "id": "ovr-nov-20-lucas",
-      "date": "2026-11-20",
-      "team_id": "6ae3ae28910b0403b224d7a4",
-      "status": "troca",
-      "custom_name": "Lucas / Alison",
-      "member_out": "Felipe",
-      "member_in": "Alison",
-      "note": "Troca de plantão Dia da Consciência Negra (Alison cobriu Felipe)"
-    },
-    {
       "id": "ovr-nov-20-facao",
       "date": "2026-11-20",
       "team_id": "6ae3ae28910b0403b224d7a5",
       "status": "troca",
       "custom_name": "Lucas / Alison",
-      "member_out": "Felipe",
-      "member_in": "Alison",
-      "note": "Troca de plantão Dia da Consciência Negra (Alison cobriu Felipe)"
-    },
-    {
-      "id": "ovr-nov-22-lucas",
-      "date": "2026-11-22",
-      "team_id": "6ae3ae28910b0403b224d7a4",
-      "status": "troca",
-      "custom_name": "Lucas / Alison",
+      "member": "Facão",
       "member_out": "Facão",
       "member_in": "Lucas",
-      "note": "Troca de plantão de domingo (Lucas cobriu Facão)"
+      "note": "Facão trocou com o Lucas"
     },
     {
       "id": "ovr-nov-22-facao",
@@ -262,9 +243,10 @@
       "team_id": "6ae3ae28910b0403b224d7a5",
       "status": "troca",
       "custom_name": "Lucas / Alison",
+      "member": "Facão",
       "member_out": "Facão",
       "member_in": "Lucas",
-      "note": "Troca de plantão de domingo (Lucas cobriu Facão)"
+      "note": "Facão trocou com o Lucas"
     },
     {
       "id": "ovr-nov-21-welliton-tilu",

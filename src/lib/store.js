@@ -8,7 +8,7 @@ import {
   INITIAL_SERVICES,
 } from "./schedule";
 
-const STORAGE_KEY = "escala_facil_pro_v4_state";
+const STORAGE_KEY = "escala_facil_pro_v5_state";
 const AUTH_SESSION_KEY = "escala_facil_pro_admin_session";
 const ADMIN_AUTH_KEY = "escala_facil_pro_admin_cred";
 const GITHUB_SYNC_KEY = "escala_facil_pro_github_sync";

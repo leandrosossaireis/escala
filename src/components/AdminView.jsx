@@ -703,15 +703,24 @@ export default function AdminView({
     }
 
     setAppState((prev) => {
-      const filtered = prev.overrides.filter((o) =>
-        isEditing
-          ? o.id !== pointOverrideForm.id
-          : !(
-              o.date === pointOverrideForm.date &&
-              o.team_id === pointOverrideForm.team_id &&
-              (o.member || "") === (pointOverrideForm.member || "")
-            )
-      );
+      const filtered = prev.overrides.filter((o) => {
+        if (isEditing && o.id === pointOverrideForm.id) return false;
+        // Also remove any legacy twin override on the same date that shares the same swap/custom_name
+        if (
+          isEditing &&
+          o.date === pointOverrideForm.date &&
+          o.status === "troca" &&
+          pointOverrideForm.status === "troca"
+        ) {
+          return false;
+        }
+        return !(
+          !isEditing &&
+          o.date === pointOverrideForm.date &&
+          o.team_id === pointOverrideForm.team_id &&
+          (o.member || "") === (pointOverrideForm.member || "")
+        );
+      });
       filtered.push({
         id: pointOverrideForm.id || `ovr-${Date.now()}`,
         date: pointOverrideForm.date,

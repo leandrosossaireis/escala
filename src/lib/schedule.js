@@ -110,34 +110,15 @@ export const INITIAL_HOLIDAYS = [
 
 export const INITIAL_OVERRIDES = [
   {
-    id: "ovr-nov-20-lucas",
-    date: "2026-11-20",
-    team_id: "6ae3ae28910b0403b224d7a4",
-    status: "troca",
-    custom_name: "Lucas / Alison",
-    member_out: "Felipe",
-    member_in: "Alison",
-    note: "Troca de plantão Dia da Consciência Negra (Alison cobriu Felipe)",
-  },
-  {
     id: "ovr-nov-20-facao",
     date: "2026-11-20",
     team_id: "6ae3ae28910b0403b224d7a5",
     status: "troca",
     custom_name: "Lucas / Alison",
-    member_out: "Felipe",
-    member_in: "Alison",
-    note: "Troca de plantão Dia da Consciência Negra (Alison cobriu Felipe)",
-  },
-  {
-    id: "ovr-nov-22-lucas",
-    date: "2026-11-22",
-    team_id: "6ae3ae28910b0403b224d7a4",
-    status: "troca",
-    custom_name: "Lucas / Alison",
+    member: "Facão",
     member_out: "Facão",
     member_in: "Lucas",
-    note: "Troca de plantão de domingo (Lucas cobriu Facão)",
+    note: "Facão trocou com o Lucas",
   },
   {
     id: "ovr-nov-22-facao",
@@ -145,9 +126,10 @@ export const INITIAL_OVERRIDES = [
     team_id: "6ae3ae28910b0403b224d7a5",
     status: "troca",
     custom_name: "Lucas / Alison",
+    member: "Facão",
     member_out: "Facão",
     member_in: "Lucas",
-    note: "Troca de plantão de domingo (Lucas cobriu Facão)",
+    note: "Facão trocou com o Lucas",
   },
   {
     id: "ovr-nov-21-welliton-tilu",
@@ -788,13 +770,19 @@ export function buildCalendar({
               dutyActiveStatus;
 
             if (targetTeam.id !== team.id) {
-              if (teamStatuses[targetTeam.id].status === "folga") {
+              if (ovr.status === "troca") {
+                teamStatuses[targetTeam.id].status = "troca";
+                if (ovr.custom_name) {
+                  teamStatuses[targetTeam.id].custom_name = ovr.custom_name;
+                }
+              } else if (teamStatuses[targetTeam.id].status === "folga") {
                 teamStatuses[targetTeam.id].status = "alteracao";
               }
               const outPerson = ovr.member || ovr.member_out || team.name;
               const defaultSubNote = `${ovr.member_in} trabalhou cobrindo ${outPerson} (equipe ${team.name})${
                 subPrevBase === "folga" ? " em seu dia de folga" : ""
               }`;
+              // Always propagate the edited ovr.note to the substitute's team card so both cards show the exact same description!
               teamStatuses[targetTeam.id].note =
                 ovr.note || teamStatuses[targetTeam.id].note || defaultSubNote;
             }
