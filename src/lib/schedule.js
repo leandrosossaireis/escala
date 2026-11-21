@@ -98,11 +98,15 @@ export const INITIAL_HOLIDAYS = [
   { id: "hol-2026-04-21", date: "2026-04-21", name: "Tiradentes",                 type: "nacional" },
   { id: "hol-2026-05-01", date: "2026-05-01", name: "Dia do Trabalho",            type: "nacional" },
   { id: "hol-2026-06-04", date: "2026-06-04", name: "Corpus Christi",             type: "facultativo" },
+  { id: "hol-2026-07-09", date: "2026-07-09", name: "Revolução Constitucionalista (SP)", type: "estadual" },
   { id: "hol-2026-09-07", date: "2026-09-07", name: "Independência do Brasil",    type: "nacional" },
   { id: "hol-2026-10-12", date: "2026-10-12", name: "Nossa Senhora Aparecida",    type: "nacional" },
   { id: "hol-2026-11-02", date: "2026-11-02", name: "Finados",                    type: "nacional" },
+  { id: "hol-2026-11-15", date: "2026-11-15", name: "Proclamação da República",   type: "nacional" },
   { id: "hol-2026-11-20", date: "2026-11-20", name: "Dia da Consciência Negra",   type: "nacional" },
+  { id: "hol-2026-12-13", date: "2026-12-13", name: "Dia de Santa Luzia (Pinhal-SP)", type: "municipal" },
   { id: "hol-2026-12-25", date: "2026-12-25", name: "Natal",                      type: "nacional" },
+  { id: "hol-2026-12-27", date: "2026-12-27", name: "Aniversário de Espírito Santo do Pinhal", type: "municipal" },
   { id: "hol-2027-01-01", date: "2027-01-01", name: "Ano Novo",                   type: "nacional" },
 ];
 
@@ -950,11 +954,14 @@ export function generateBrazilianHolidaysForYear(year) {
     { id: `hol-${y}-04-21`, date: `${y}-04-21`, name: "Tiradentes", type: "nacional" },
     { id: `hol-${y}-05-01`, date: `${y}-05-01`, name: "Dia do Trabalho", type: "nacional" },
     { id: `hol-${corpusChristi}`, date: corpusChristi, name: "Corpus Christi", type: "facultativo" },
+    { id: `hol-${y}-07-09`, date: `${y}-07-09`, name: "Revolução Constitucionalista (SP)", type: "estadual" },
     { id: `hol-${y}-09-07`, date: `${y}-09-07`, name: "Independência do Brasil", type: "nacional" },
     { id: `hol-${y}-10-12`, date: `${y}-10-12`, name: "Nossa Senhora Aparecida", type: "nacional" },
     { id: `hol-${y}-11-02`, date: `${y}-11-02`, name: "Finados", type: "nacional" },
     { id: `hol-${y}-11-15`, date: `${y}-11-15`, name: "Proclamação da República", type: "nacional" },
     { id: `hol-${y}-11-20`, date: `${y}-11-20`, name: "Dia da Consciência Negra", type: "nacional" },
+    { id: `hol-${y}-12-13`, date: `${y}-12-13`, name: "Dia de Santa Luzia (Pinhal-SP)", type: "municipal" },
     { id: `hol-${y}-12-25`, date: `${y}-12-25`, name: "Natal", type: "nacional" },
+    { id: `hol-${y}-12-27`, date: `${y}-12-27`, name: "Aniversário de Espírito Santo do Pinhal", type: "municipal" },
   ];
 }

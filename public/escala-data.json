@@ -178,6 +178,12 @@
       "type": "facultativo"
     },
     {
+      "id": "hol-2026-07-09",
+      "date": "2026-07-09",
+      "name": "Revolução Constitucionalista (SP)",
+      "type": "estadual"
+    },
+    {
       "id": "hol-2026-09-07",
       "date": "2026-09-07",
       "name": "Independência do Brasil",
@@ -196,16 +202,34 @@
       "type": "nacional"
     },
     {
+      "id": "hol-2026-11-15",
+      "date": "2026-11-15",
+      "name": "Proclamação da República",
+      "type": "nacional"
+    },
+    {
       "id": "hol-2026-11-20",
       "date": "2026-11-20",
       "name": "Dia da Consciência Negra",
       "type": "nacional"
     },
     {
+      "id": "hol-2026-12-13",
+      "date": "2026-12-13",
+      "name": "Dia de Santa Luzia (Pinhal-SP)",
+      "type": "municipal"
+    },
+    {
       "id": "hol-2026-12-25",
       "date": "2026-12-25",
       "name": "Natal",
       "type": "nacional"
+    },
+    {
+      "id": "hol-2026-12-27",
+      "date": "2026-12-27",
+      "name": "Aniversário de Espírito Santo do Pinhal",
+      "type": "municipal"
     },
     {
       "id": "hol-2027-01-01",

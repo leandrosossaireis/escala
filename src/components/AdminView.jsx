@@ -453,7 +453,7 @@ export default function AdminView({
       };
     });
     notify?.(
-      `${generated.length} feriados nacionais de ${importYear} importados!`
+      `${generated.length} feriados (Nacionais, SP e Espírito Santo do Pinhal) de ${importYear} importados!`
     );
   }
 
@@ -1454,15 +1454,17 @@ export default function AdminView({
               </form>
             </div>
 
-            {/* Importar feriados nacionais */}
+            {/* Importar feriados nacionais e municipais */}
             <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)] flex flex-col justify-between">
               <div>
                 <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-1">
-                  Importar feriados nacionais
+                  Importar feriados (Nacionais + Pinhal-SP)
                 </h2>
                 <p className="text-[12.5px] text-[#6B7280] mb-4">
-                  Gera automaticamente todos os feriados nacionais e móveis
-                  (Carnaval, Sexta-feira Santa, Corpus Christi) do ano.
+                  Gera automaticamente os feriados nacionais, móveis, estadual
+                  (9 de Julho - SP) e municipais de{" "}
+                  <strong>Espírito Santo do Pinhal-SP</strong> (13/12 Santa
+                  Luzia e 27/12 Aniversário da Cidade) para o ano escolhido.
                 </p>
               </div>
               <div className="flex items-end gap-2">
