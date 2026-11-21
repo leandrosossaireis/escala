@@ -440,43 +440,30 @@ export default function PublicCalendarView({
           </p>
         </div>
 
-        {/* Month Navigation + WhatsApp Share */}
-        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 w-full md:w-auto">
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <button
-              onClick={handlePrevMonth}
-              aria-label="Mês anterior"
-              className="w-9 h-9 rounded-full bg-white border border-[#E5E4DF] flex items-center justify-center text-[#14181F] hover:bg-[#F4F3EE] active:scale-95 transition"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <div className="min-w-[140px] sm:min-w-[170px] text-center font-heading font-semibold text-[14px] sm:text-[15px] text-[#14181F] tabular-nums">
-              {formatMonthTitle(monthKey)}
-            </div>
-            <button
-              onClick={handleNextMonth}
-              aria-label="Próximo mês"
-              className="w-9 h-9 rounded-full bg-white border border-[#E5E4DF] flex items-center justify-center text-[#14181F] hover:bg-[#F4F3EE] active:scale-95 transition"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleToday}
-              className="px-3 h-9 rounded-full bg-white border border-[#E5E4DF] text-[12.5px] sm:text-[13px] font-medium text-[#14181F] hover:bg-[#F4F3EE] transition"
-            >
-              Hoje
-            </button>
-          </div>
-
+        {/* Month Navigation */}
+        <div className="flex items-center gap-1.5 sm:gap-2 self-start md:self-end">
           <button
-            type="button"
-            onClick={handleCopyWhatsAppSummary}
-            title="Copiar resumo da semana para WhatsApp"
-            className="h-9 px-3.5 rounded-full bg-[#10B981]/15 text-[#065F46] border border-[#10B981]/30 text-[12px] font-semibold hover:bg-[#10B981]/25 transition inline-flex items-center gap-1.5"
+            onClick={handlePrevMonth}
+            aria-label="Mês anterior"
+            className="w-9 h-9 rounded-full bg-white border border-[#E5E4DF] flex items-center justify-center text-[#14181F] hover:bg-[#F4F3EE] active:scale-95 transition"
           >
-            <Share2 className="w-3.5 h-3.5" />
-            <span className="hidden xs:inline">Copiar p/</span>
-            <span>WhatsApp</span>
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <div className="min-w-[140px] sm:min-w-[170px] text-center font-heading font-semibold text-[14px] sm:text-[15px] text-[#14181F] tabular-nums">
+            {formatMonthTitle(monthKey)}
+          </div>
+          <button
+            onClick={handleNextMonth}
+            aria-label="Próximo mês"
+            className="w-9 h-9 rounded-full bg-white border border-[#E5E4DF] flex items-center justify-center text-[#14181F] hover:bg-[#F4F3EE] active:scale-95 transition"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleToday}
+            className="px-3.5 h-9 rounded-full bg-white border border-[#E5E4DF] text-[12.5px] sm:text-[13px] font-medium text-[#14181F] hover:bg-[#F4F3EE] transition"
+          >
+            Hoje
           </button>
         </div>
       </div>
