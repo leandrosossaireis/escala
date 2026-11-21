@@ -1,0 +1,10 @@
+{
+  "name": "Escala Operacional — Campo e Atendimento",
+  "short_name": "Escala Fácil",
+  "description": "Calendário de escala operacional, plantões, serviços e dias trabalhados.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#FBFAF7",
+  "theme_color": "#14181F",
+  "orientation": "portrait-primary"
+}

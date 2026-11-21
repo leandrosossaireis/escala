@@ -7,13 +7,15 @@ import {
   Briefcase,
   Users,
   Plus,
-  CheckCircle2,
-  Clock,
-  FileText,
   X,
+  Share2,
+  Copy,
+  Trophy,
   Calendar as CalendarIcon,
-  Award,
+  Printer,
+  UserCheck,
   Sparkles,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
   STATUS_META,
@@ -29,9 +31,12 @@ import {
   buildCalendar,
   buildEmployeeWorkdaySummary,
   getWeekday,
+  getMondayOfWeek,
+  addDays,
 } from "../lib/schedule";
 
 const WEEKDAY_HEADERS = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"];
+const WEEKDAY_MOBILE = ["S", "T", "Q", "Q", "S", "S", "D"];
 const SHORT_WEEKDAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 export default function PublicCalendarView({
@@ -50,19 +55,20 @@ export default function PublicCalendarView({
   }, []);
 
   const [monthKey, setMonthKey] = useState(() => todayIso.slice(0, 7));
-  const [viewMode, setViewMode] = useState("mes"); // "mes" | "equipes" | "funcionarios" | "servicos"
+  const [viewMode, setViewMode] = useState("mes"); // "mes" | "equipes" | "funcionarios" | "ranking" | "servicos"
   const [selectedTeamId, setSelectedTeamId] = useState("all");
-  const [selectedGroup, setSelectedGroup] = useState("all"); // "all" | "A" | "B" | "campo" | "atendimento"
+  const [selectedGroup, setSelectedGroup] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [onlyHolidays, setOnlyHolidays] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [jumpInput, setJumpInput] = useState(() => {
     const [y, m, d] = todayIso.split("-");
     return `${d}/${m}/${y}`;
   });
   const [focusedDate, setFocusedDate] = useState(null);
   const [modalDate, setModalDate] = useState(null);
+  const [selectedEmployeeProfile, setSelectedEmployeeProfile] = useState(null);
 
-  // Quick service form inside day modal or Services view
   const [serviceForm, setServiceForm] = useState({
     date: todayIso,
     team_id: "",
@@ -110,7 +116,6 @@ export default function PublicCalendarView({
     [monthKey]
   );
 
-  // Calendar data for full grid (used by Mês view)
   const gridCalendar = useMemo(
     () =>
       buildCalendar({
@@ -127,7 +132,6 @@ export default function PublicCalendarView({
     [gridStart, gridEnd, appState]
   );
 
-  // Calendar data strictly for the active month (used by Equipes matrix & Funcionários summary)
   const monthCalendar = useMemo(
     () =>
       buildCalendar({
@@ -143,6 +147,64 @@ export default function PublicCalendarView({
       }),
     [firstDay, lastDay, appState]
   );
+
+  // Full Year Calendar for Annual Ranking (Jan 1 to Dec 31 of the selected year)
+  const selectedYear = monthKey.slice(0, 4);
+  const yearCalendar = useMemo(
+    () =>
+      buildCalendar({
+        startIso: `${selectedYear}-01-01`,
+        endIso: `${selectedYear}-12-31`,
+        settings: appState.settings,
+        teams: appState.teams,
+        holidays: appState.holidays,
+        overrides: appState.overrides,
+        absences: appState.absences,
+        weekOverrides: appState.weekOverrides,
+        dutyOverrides: appState.dutyOverrides,
+      }),
+    [selectedYear, appState]
+  );
+
+  // Live Today & Next Sunday Snapshot
+  const nextSundayIso = useMemo(() => {
+    const wd = getWeekday(todayIso);
+    return wd === 0 ? todayIso : addDays(todayIso, 7 - wd);
+  }, [todayIso]);
+
+  const todaySnapshotCalendar = useMemo(
+    () =>
+      buildCalendar({
+        startIso: todayIso,
+        endIso: addDays(todayIso, 14),
+        settings: appState.settings,
+        teams: appState.teams,
+        holidays: appState.holidays,
+        overrides: appState.overrides,
+        absences: appState.absences,
+        weekOverrides: appState.weekOverrides,
+        dutyOverrides: appState.dutyOverrides,
+      }),
+    [todayIso, appState]
+  );
+
+  const todayInfo = todaySnapshotCalendar.days[todayIso];
+  const nextSundayInfo = todaySnapshotCalendar.days[nextSundayIso];
+
+  const workingTodayCampo = useMemo(() => {
+    if (!todayInfo) return [];
+    return activeTeams
+      .filter((t) => t.kind === "campo")
+      .filter((t) =>
+        [
+          "trabalha",
+          "plantao_domingo",
+          "plantao_feriado",
+          "troca",
+          "alteracao",
+        ].includes(todayInfo.teams?.[t.id]?.status)
+      );
+  }, [todayInfo, activeTeams]);
 
   const gridDays = useMemo(
     () => listDaysInRange(gridStart, gridEnd),
@@ -164,6 +226,16 @@ export default function PublicCalendarView({
     [monthCalendar, appState.teams, appState.services]
   );
 
+  const annualEmployeeSummary = useMemo(
+    () =>
+      buildEmployeeWorkdaySummary(
+        yearCalendar,
+        appState.teams,
+        appState.services || []
+      ),
+    [yearCalendar, appState.teams, appState.services]
+  );
+
   const monthServices = useMemo(() => {
     return (appState.services || [])
       .filter((s) => s.date >= firstDay && s.date <= lastDay)
@@ -181,13 +253,15 @@ export default function PublicCalendarView({
 
   function handlePrevMonth() {
     const [y, m] = monthKey.split("-").map(Number);
-    const prev = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+    const prev =
+      m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
     setMonthKey(prev);
   }
 
   function handleNextMonth() {
     const [y, m] = monthKey.split("-").map(Number);
-    const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+    const next =
+      m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
     setMonthKey(next);
   }
 
@@ -214,6 +288,76 @@ export default function PublicCalendarView({
     }
     setMonthKey(iso.slice(0, 7));
     setFocusedDate(iso);
+  }
+
+  // Generate WhatsApp Summary Message for current week / weekend duty
+  function handleCopyWhatsAppSummary() {
+    const baseDate =
+      focusedDate && focusedDate.slice(0, 7) === monthKey
+        ? focusedDate
+        : todayIso.slice(0, 7) === monthKey
+        ? todayIso
+        : firstDay;
+
+    const monIso = getMondayOfWeek(baseDate);
+    const sunIso = addDays(monIso, 6);
+    const weekCal = buildCalendar({
+      startIso: monIso,
+      endIso: sunIso,
+      settings: appState.settings,
+      teams: appState.teams,
+      holidays: appState.holidays,
+      overrides: appState.overrides,
+      absences: appState.absences,
+      weekOverrides: appState.weekOverrides,
+      dutyOverrides: appState.dutyOverrides,
+    });
+
+    const monInfo = weekCal.days[monIso];
+    const sunInfo = weekCal.days[sunIso];
+    const monFriGrp = monInfo?.mon_fri_group || "A";
+    const tueSatGrp = monFriGrp === "A" ? "B" : "A";
+
+    const lines = [
+      `📅 *ESCALA OPERACIONAL (${formatDayMonth(monIso)} a ${formatDayMonth(
+        sunIso
+      )})*`,
+      ``,
+      `🟢 *Segunda a Sexta (Grupo ${monFriGrp}):*`,
+      activeTeams
+        .filter((t) => t.group === monFriGrp)
+        .map((t) => `• ${t.name}`)
+        .join("\n"),
+      ``,
+      `🔵 *Terça a Sábado (Grupo ${tueSatGrp}):*`,
+      activeTeams
+        .filter((t) => t.group === tueSatGrp)
+        .map((t) => `• ${t.name}`)
+        .join("\n"),
+      ``,
+      `🟠 *Plantão de Domingo (${formatShortDate(sunIso)}):*`,
+      `• Campo: *${sunInfo?.campo_duty_label || "A definir"}*`,
+    ];
+
+    if (sunInfo?.atendimento_duty_label) {
+      lines.push(`• Atendimento: *${sunInfo.atendimento_duty_label}*`);
+    }
+
+    // Check if there is any holiday in the week
+    for (const d of listDaysInRange(monIso, sunIso)) {
+      const di = weekCal.days[d];
+      if (di?.holiday && di.holiday.type !== "facultativo") {
+        lines.push(
+          ``,
+          `🟣 *Feriado ${di.holiday.name} (${formatDayMonth(d)}):*`,
+          `• Plantão: *${di.campo_duty_label || "A definir"}*`
+        );
+      }
+    }
+
+    const text = lines.join("\n");
+    navigator.clipboard?.writeText(text);
+    notify?.("Resumo da semana copiado! Pronto para colar no WhatsApp.");
   }
 
   function openDayModal(iso) {
@@ -280,59 +424,224 @@ export default function PublicCalendarView({
       : null;
 
   return (
-    <div className="max-w-[1240px] mx-auto px-4 sm:px-6 pt-7 pb-16">
+    <div className="max-w-[1240px] mx-auto px-3 sm:px-6 pt-4 sm:pt-7 pb-16">
       {/* Header Title & Month Switcher */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 sm:gap-4 mb-4 sm:mb-5">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8F98] mb-1.5">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8F98] mb-1">
             CONSULTA LIVRE
           </div>
-          <h1 className="font-heading text-[28px] sm:text-[34px] font-bold tracking-[-0.02em] text-[#14181F] leading-tight">
+          <h1 className="font-heading text-[24px] sm:text-[34px] font-bold tracking-[-0.02em] text-[#14181F] leading-tight">
             Calendário de escala
           </h1>
-          <p className="text-[14px] text-[#6B7280] mt-1 max-w-xl">
+          <p className="text-[13px] sm:text-[14px] text-[#6B7280] mt-0.5 max-w-xl">
             Semanas alternadas entre segunda–sexta e terça–sábado, plantões de
-            domingo, feriados, férias e controle diário de serviços.
+            domingo, feriados, férias e controle de dias trabalhados.
           </p>
         </div>
 
-        {/* Month Navigation */}
-        <div className="flex items-center gap-2 self-start md:self-end">
-          <button
-            onClick={handlePrevMonth}
-            aria-label="Mês anterior"
-            className="w-9 h-9 rounded-full bg-white border border-[#E5E4DF] flex items-center justify-center text-[#14181F] hover:bg-[#F4F3EE] transition"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <div className="min-w-[175px] text-center font-heading font-semibold text-[15px] text-[#14181F] tabular-nums">
-            {formatMonthTitle(monthKey)}
+        {/* Month Navigation + WhatsApp Share */}
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 w-full md:w-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              onClick={handlePrevMonth}
+              aria-label="Mês anterior"
+              className="w-9 h-9 rounded-full bg-white border border-[#E5E4DF] flex items-center justify-center text-[#14181F] hover:bg-[#F4F3EE] active:scale-95 transition"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div className="min-w-[140px] sm:min-w-[170px] text-center font-heading font-semibold text-[14px] sm:text-[15px] text-[#14181F] tabular-nums">
+              {formatMonthTitle(monthKey)}
+            </div>
+            <button
+              onClick={handleNextMonth}
+              aria-label="Próximo mês"
+              className="w-9 h-9 rounded-full bg-white border border-[#E5E4DF] flex items-center justify-center text-[#14181F] hover:bg-[#F4F3EE] active:scale-95 transition"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleToday}
+              className="px-3 h-9 rounded-full bg-white border border-[#E5E4DF] text-[12.5px] sm:text-[13px] font-medium text-[#14181F] hover:bg-[#F4F3EE] transition"
+            >
+              Hoje
+            </button>
           </div>
+
           <button
-            onClick={handleNextMonth}
-            aria-label="Próximo mês"
-            className="w-9 h-9 rounded-full bg-white border border-[#E5E4DF] flex items-center justify-center text-[#14181F] hover:bg-[#F4F3EE] transition"
+            type="button"
+            onClick={handleCopyWhatsAppSummary}
+            title="Copiar resumo da semana para WhatsApp"
+            className="h-9 px-3.5 rounded-full bg-[#10B981]/15 text-[#065F46] border border-[#10B981]/30 text-[12px] font-semibold hover:bg-[#10B981]/25 transition inline-flex items-center gap-1.5"
           >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleToday}
-            className="ml-1 px-3.5 h-9 rounded-full bg-white border border-[#E5E4DF] text-[13px] font-medium text-[#14181F] hover:bg-[#F4F3EE] transition"
-          >
-            Hoje
+            <Share2 className="w-3.5 h-3.5" />
+            <span className="hidden xs:inline">Copiar p/</span>
+            <span>WhatsApp</span>
           </button>
         </div>
       </div>
 
-      {/* Filters & View Mode Toolbar */}
-      <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-3.5 shadow-[0_1px_2px_rgba(20,24,31,0.04)] mb-4">
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex flex-wrap items-center gap-2">
+      {/* Live Operational Status Bar (Hoje & Próximo Domingo) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 mb-4">
+        <div
+          onClick={() => openDayModal(todayIso)}
+          className="bg-white border border-[#EBEBE6] rounded-[16px] p-3.5 shadow-[0_1px_2px_rgba(20,24,31,0.03)] flex items-center justify-between gap-3 cursor-pointer hover:border-[#14181F]/30 transition"
+        >
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#10B981]">
+              <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
+              <span>HOJE · {formatShortDate(todayIso)}</span>
+            </div>
+            <div className="font-heading text-[14px] font-bold text-[#14181F] mt-0.5 truncate">
+              {todayInfo?.weekday === 0
+                ? `Plantão: ${todayInfo?.campo_duty_label || "Domingo"}`
+                : `Seg–Sex: Grupo ${todayInfo?.mon_fri_group} (${workingTodayCampo.length} duplas ativas)`}
+            </div>
+          </div>
+          <span className="px-2.5 py-1 rounded-full bg-[#F3F2ED] text-[11px] font-semibold text-[#14181F] shrink-0">
+            Ver hoje
+          </span>
+        </div>
+
+        <div
+          onClick={() => openDayModal(nextSundayIso)}
+          className="bg-white border border-[#EBEBE6] rounded-[16px] p-3.5 shadow-[0_1px_2px_rgba(20,24,31,0.03)] flex items-center justify-between gap-3 cursor-pointer hover:border-[#F97316]/40 transition"
+        >
+          <div className="min-w-0">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#F97316]">
+              PLANTÃO DE DOMINGO · {formatDayMonth(nextSundayIso)}
+            </div>
+            <div className="font-heading text-[14px] font-bold text-[#14181F] mt-0.5 truncate">
+              Campo: {nextSundayInfo?.campo_duty_label || "A definir"}
+              {nextSundayInfo?.atendimento_duty_label
+                ? ` · Atend.: ${nextSundayInfo.atendimento_duty_label.replace(
+                    " · plantão",
+                    ""
+                  )}`
+                : ""}
+            </div>
+          </div>
+          <span className="px-2.5 py-1 rounded-full bg-[#F97316]/15 text-[#C2410C] text-[11px] font-semibold shrink-0">
+            Domingo
+          </span>
+        </div>
+
+        <div className="sm:col-span-2 lg:col-span-1 bg-white border border-[#EBEBE6] rounded-[16px] p-3.5 shadow-[0_1px_2px_rgba(20,24,31,0.03)] flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8F98]">
+              RODÍZIO DA SEMANA ATUAL
+            </div>
+            <div className="text-[13px] font-semibold text-[#14181F] mt-0.5 truncate">
+              Seg–Sex:{" "}
+              <span className="text-[#10B981]">
+                Grupo {todayInfo?.mon_fri_group}
+              </span>{" "}
+              · Ter–Sáb:{" "}
+              <span className="text-[#3B82F6]">
+                Grupo {todayInfo?.mon_fri_group === "A" ? "B" : "A"}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setViewMode("funcionarios")}
+            className="px-2.5 py-1 rounded-full bg-[#14181F] text-white text-[11px] font-semibold shrink-0 hover:bg-[#272D38]"
+          >
+            Ver Diárias
+          </button>
+        </div>
+      </div>
+
+      {/* Filters & View Mode Toolbar (100% Responsive) */}
+      <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-3 sm:p-3.5 shadow-[0_1px_2px_rgba(20,24,31,0.04)] mb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* View Switcher Tabs - Horizontally Scrollable on Mobile */}
+          <div className="flex items-center justify-between gap-2 order-1 lg:order-2">
+            <div className="flex items-center gap-1 p-1 rounded-full bg-[#F3F2ED] border border-[#E8E7E1] overflow-x-auto max-w-full no-scrollbar">
+              <button
+                type="button"
+                onClick={() => setViewMode("mes")}
+                className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 h-8 rounded-full text-[12.5px] sm:text-[13px] font-medium transition whitespace-nowrap ${
+                  viewMode === "mes"
+                    ? "bg-white text-[#14181F] shadow-sm"
+                    : "text-[#6B7280] hover:text-[#14181F]"
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
+                <span>Mês</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("equipes")}
+                className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 h-8 rounded-full text-[12.5px] sm:text-[13px] font-medium transition whitespace-nowrap ${
+                  viewMode === "equipes"
+                    ? "bg-white text-[#14181F] shadow-sm"
+                    : "text-[#6B7280] hover:text-[#14181F]"
+                }`}
+              >
+                <List className="w-3.5 h-3.5 shrink-0" />
+                <span>Equipes</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("funcionarios")}
+                className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 h-8 rounded-full text-[12.5px] sm:text-[13px] font-medium transition whitespace-nowrap ${
+                  viewMode === "funcionarios"
+                    ? "bg-white text-[#14181F] shadow-sm"
+                    : "text-[#6B7280] hover:text-[#14181F]"
+                }`}
+              >
+                <Users className="w-3.5 h-3.5 shrink-0" />
+                <span>Funcionários</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("ranking")}
+                className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 h-8 rounded-full text-[12.5px] sm:text-[13px] font-medium transition whitespace-nowrap ${
+                  viewMode === "ranking"
+                    ? "bg-white text-[#14181F] shadow-sm"
+                    : "text-[#6B7280] hover:text-[#14181F]"
+                }`}
+              >
+                <Trophy className="w-3.5 h-3.5 shrink-0" />
+                <span>Anual {selectedYear}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("servicos")}
+                className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 h-8 rounded-full text-[12.5px] sm:text-[13px] font-medium transition whitespace-nowrap ${
+                  viewMode === "servicos"
+                    ? "bg-white text-[#14181F] shadow-sm"
+                    : "text-[#6B7280] hover:text-[#14181F]"
+                }`}
+              >
+                <Briefcase className="w-3.5 h-3.5 shrink-0" />
+                <span>Serviços ({monthServices.length})</span>
+              </button>
+            </div>
+
+            {/* Mobile Filter Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setShowMobileFilters((v) => !v)}
+              className="sm:hidden h-9 px-3 rounded-full bg-[#F3F2ED] border border-[#E8E7E1] text-[12px] font-semibold text-[#14181F] inline-flex items-center gap-1 shrink-0"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Filtros</span>
+            </button>
+          </div>
+
+          {/* Filter Controls (Always visible on tablet/desktop, collapsible on phone) */}
+          <div
+            className={`${
+              showMobileFilters ? "grid" : "hidden sm:flex"
+            } grid-cols-1 xs:grid-cols-2 sm:flex-wrap items-center gap-2 order-2 lg:order-1`}
+          >
             {/* Team Filter */}
             <select
               value={selectedTeamId}
               onChange={(e) => setSelectedTeamId(e.target.value)}
-              className="h-10 px-3.5 rounded-full bg-white border border-[#E5E4DF] text-[13px] font-medium text-[#14181F] focus:outline-none focus:border-[#14181F]"
+              className="h-9 sm:h-10 px-3.5 rounded-full bg-white border border-[#E5E4DF] text-[12.5px] sm:text-[13px] font-medium text-[#14181F] focus:outline-none focus:border-[#14181F] w-full sm:w-auto"
             >
               <option value="all">Todas as equipes</option>
               <optgroup label="Equipe de campo">
@@ -359,7 +668,7 @@ export default function PublicCalendarView({
             <select
               value={selectedGroup}
               onChange={(e) => setSelectedGroup(e.target.value)}
-              className="h-10 px-3.5 rounded-full bg-white border border-[#E5E4DF] text-[13px] font-medium text-[#14181F] focus:outline-none focus:border-[#14181F]"
+              className="h-9 sm:h-10 px-3.5 rounded-full bg-white border border-[#E5E4DF] text-[12.5px] sm:text-[13px] font-medium text-[#14181F] focus:outline-none focus:border-[#14181F] w-full sm:w-auto"
             >
               <option value="all">Todos os grupos</option>
               <option value="A">Grupo A</option>
@@ -372,7 +681,7 @@ export default function PublicCalendarView({
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="h-10 px-3.5 rounded-full bg-white border border-[#E5E4DF] text-[13px] font-medium text-[#14181F] focus:outline-none focus:border-[#14181F]"
+              className="h-9 sm:h-10 px-3.5 rounded-full bg-white border border-[#E5E4DF] text-[12.5px] sm:text-[13px] font-medium text-[#14181F] focus:outline-none focus:border-[#14181F] w-full sm:w-auto"
             >
               <option value="all">Todos os status</option>
               {Object.entries(STATUS_META).map(([k, v]) => (
@@ -383,13 +692,13 @@ export default function PublicCalendarView({
             </select>
 
             {/* Only Holidays Toggle */}
-            <label className="inline-flex items-center gap-2 h-10 px-3.5 rounded-full bg-white border border-[#E5E4DF] text-[13px] font-medium text-[#14181F] cursor-pointer select-none">
+            <label className="inline-flex items-center justify-between sm:justify-start gap-2 h-9 sm:h-10 px-3.5 rounded-full bg-white border border-[#E5E4DF] text-[12.5px] sm:text-[13px] font-medium text-[#14181F] cursor-pointer select-none">
               <button
                 type="button"
                 role="switch"
                 aria-checked={onlyHolidays}
                 onClick={() => setOnlyHolidays((v) => !v)}
-                className={`w-8 h-4.5 rounded-full transition-colors relative flex items-center px-0.5 ${
+                className={`rounded-full transition-colors relative flex items-center px-0.5 ${
                   onlyHolidays ? "bg-[#14181F]" : "bg-[#E2E1DC]"
                 }`}
                 style={{ height: "20px", width: "34px" }}
@@ -406,14 +715,14 @@ export default function PublicCalendarView({
             {/* Date Jump Input */}
             <form
               onSubmit={handleJumpDate}
-              className="inline-flex items-center h-10 pl-3.5 pr-1.5 rounded-full bg-white border border-[#E5E4DF]"
+              className="inline-flex items-center justify-between h-9 sm:h-10 pl-3.5 pr-1.5 rounded-full bg-white border border-[#E5E4DF] w-full sm:w-auto"
             >
               <input
                 type="text"
                 value={jumpInput}
                 onChange={(e) => setJumpInput(e.target.value)}
                 placeholder="dd/mm/aaaa"
-                className="w-[100px] text-[13px] font-medium text-[#14181F] focus:outline-none tabular-nums"
+                className="w-[95px] text-[12.5px] sm:text-[13px] font-medium text-[#14181F] focus:outline-none tabular-nums"
               />
               <button
                 type="submit"
@@ -423,80 +732,29 @@ export default function PublicCalendarView({
               </button>
             </form>
           </div>
-
-          {/* View Switcher Tabs */}
-          <div className="inline-flex items-center p-1 rounded-full bg-[#F3F2ED] border border-[#E8E7E1]">
-            <button
-              type="button"
-              onClick={() => setViewMode("mes")}
-              className={`inline-flex items-center gap-1.5 px-3.5 h-8 rounded-full text-[13px] font-medium transition ${
-                viewMode === "mes"
-                  ? "bg-white text-[#14181F] shadow-sm"
-                  : "text-[#6B7280] hover:text-[#14181F]"
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Mês</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("equipes")}
-              className={`inline-flex items-center gap-1.5 px-3.5 h-8 rounded-full text-[13px] font-medium transition ${
-                viewMode === "equipes"
-                  ? "bg-white text-[#14181F] shadow-sm"
-                  : "text-[#6B7280] hover:text-[#14181F]"
-              }`}
-            >
-              <List className="w-3.5 h-3.5" />
-              <span>Equipes</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("funcionarios")}
-              className={`inline-flex items-center gap-1.5 px-3.5 h-8 rounded-full text-[13px] font-medium transition ${
-                viewMode === "funcionarios"
-                  ? "bg-white text-[#14181F] shadow-sm"
-                  : "text-[#6B7280] hover:text-[#14181F]"
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Dias por Funcionário</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("servicos")}
-              className={`inline-flex items-center gap-1.5 px-3.5 h-8 rounded-full text-[13px] font-medium transition ${
-                viewMode === "servicos"
-                  ? "bg-white text-[#14181F] shadow-sm"
-                  : "text-[#6B7280] hover:text-[#14181F]"
-              }`}
-            >
-              <Briefcase className="w-3.5 h-3.5" />
-              <span>Serviços ({monthServices.length})</span>
-            </button>
-          </div>
         </div>
       </div>
 
       {/* ===================================================================== */}
-      {/* VIEW 1: MÊS (7-COLUMN CALENDAR GRID)                                  */}
+      {/* VIEW 1: MÊS (7-COLUMN CALENDAR GRID - RESPONSIVE MOBILE & DESKTOP)    */}
       {/* ===================================================================== */}
       {viewMode === "mes" && (
-        <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+        <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-2 sm:p-4 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
           {/* Weekday Headers */}
-          <div className="grid grid-cols-7 gap-1.5 mb-2">
-            {WEEKDAY_HEADERS.map((wd) => (
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5 mb-1.5 sm:mb-2">
+            {WEEKDAY_HEADERS.map((wd, idx) => (
               <div
                 key={wd}
-                className="text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8F98] py-1"
+                className="text-center text-[9.5px] sm:text-[10px] font-semibold uppercase tracking-[0.15em] sm:tracking-[0.22em] text-[#8A8F98] py-1"
               >
-                {wd}
+                <span className="hidden sm:inline">{wd}</span>
+                <span className="sm:hidden">{WEEKDAY_MOBILE[idx]}</span>
               </div>
             ))}
           </div>
 
           {/* Calendar Cells */}
-          <div className="grid grid-cols-7 gap-1.5">
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
             {gridDays.map((iso) => {
               const isCurrentMonth = iso.slice(0, 7) === monthKey;
               const dayInfo = gridCalendar.days[iso];
@@ -507,7 +765,6 @@ export default function PublicCalendarView({
               const isFocused = iso === focusedDate;
               const dayServices = servicesByDate[iso] || [];
 
-              // Determine cell status and color
               let cellStatus = "folga";
               let singleTeamEntry = null;
 
@@ -518,7 +775,6 @@ export default function PublicCalendarView({
                 cellStatus = getDominantDayStatus(dayInfo, visibleTeams);
               }
 
-              // Filter out if status filter or onlyHolidays filter doesn't match
               const matchesStatusFilter =
                 selectedStatus === "all" ||
                 (singleSelectedTeam
@@ -538,13 +794,13 @@ export default function PublicCalendarView({
                   <div
                     key={iso}
                     onClick={() => openDayModal(iso)}
-                    className="min-h-[112px] rounded-[13px] bg-[#FAFAF6] border border-[#F0EFEA] p-2.5 opacity-60 cursor-pointer hover:opacity-90 transition flex flex-col justify-between"
+                    className="min-h-[68px] sm:min-h-[112px] rounded-[10px] sm:rounded-[13px] bg-[#FAFAF6] border border-[#F0EFEA] p-1.5 sm:p-2.5 opacity-55 cursor-pointer hover:opacity-90 transition flex flex-col justify-between"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[13px] font-bold text-[#9CA3AF] tabular-nums">
+                      <span className="text-[11px] sm:text-[13px] font-bold text-[#9CA3AF] tabular-nums">
                         {dayNum}
                       </span>
-                      <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#A3A8B1]">
+                      <span className="hidden sm:inline text-[9px] font-semibold uppercase tracking-[0.14em] text-[#A3A8B1]">
                         {wdShort}
                       </span>
                     </div>
@@ -567,8 +823,8 @@ export default function PublicCalendarView({
                     backgroundColor: isDimmedByFilter ? "#F7F6F2" : bgHex,
                     color: isDimmedByFilter ? "#9CA3AF" : fgHex,
                   }}
-                  className={`min-h-[112px] rounded-[13px] p-2.5 transition cursor-pointer flex flex-col justify-between relative hover:brightness-[0.98] ${
-                    isFocused ? "ring-2 ring-[#14181F] ring-offset-2" : ""
+                  className={`min-h-[68px] sm:min-h-[112px] rounded-[10px] sm:rounded-[13px] p-1.5 sm:p-2.5 transition cursor-pointer flex flex-col justify-between relative hover:brightness-[0.98] active:scale-[0.99] ${
+                    isFocused ? "ring-2 ring-[#14181F] ring-offset-1 sm:ring-offset-2" : ""
                   } ${
                     isFacultativo
                       ? "border-2 border-dashed border-[#EAB308]"
@@ -581,23 +837,23 @@ export default function PublicCalendarView({
                   <div className="flex items-center justify-between">
                     {isToday ? (
                       <span
-                        className="w-6 h-6 rounded-full bg-white text-[#14181F] font-bold text-[12px] flex items-center justify-center shadow-sm tabular-nums"
+                        className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white text-[#14181F] font-bold text-[10.5px] sm:text-[12px] flex items-center justify-center shadow-sm tabular-nums"
                         title="Hoje"
                       >
                         {dayNum}
                       </span>
                     ) : (
-                      <span className="text-[13px] font-bold tabular-nums">
+                      <span className="text-[11.5px] sm:text-[13px] font-bold tabular-nums">
                         {dayNum}
                       </span>
                     )}
-                    <span className="text-[9px] font-semibold uppercase tracking-[0.14em] opacity-85">
+                    <span className="hidden sm:inline text-[9px] font-semibold uppercase tracking-[0.14em] opacity-85">
                       {wdShort}
                     </span>
                   </div>
 
-                  {/* Middle: Holiday badge, Duty pills, Single team status or Service count */}
-                  <div className="my-1.5 flex flex-col gap-1">
+                  {/* Middle: Holiday badge, Duty pills */}
+                  <div className="my-0.5 sm:my-1.5 flex flex-col gap-0.5 sm:gap-1 overflow-hidden">
                     {dayInfo?.holiday && (
                       <div
                         style={{
@@ -606,14 +862,13 @@ export default function PublicCalendarView({
                               ? "rgba(0,0,0,0.22)"
                               : "rgba(20,24,31,0.12)",
                         }}
-                        className="px-2 py-0.5 rounded-full text-[10px] font-semibold truncate w-fit max-w-full"
+                        className="px-1.5 sm:px-2 py-0.5 rounded-full text-[8.5px] sm:text-[10px] font-semibold truncate w-fit max-w-full"
                         title={`${dayInfo.holiday.name} (${dayInfo.holiday.type})`}
                       >
                         {dayInfo.holiday.name}
                       </div>
                     )}
 
-                    {/* When viewing a single team, show that team's explicit status pill */}
                     {singleSelectedTeam && singleTeamEntry && (
                       <div
                         style={{
@@ -622,15 +877,13 @@ export default function PublicCalendarView({
                               ? "rgba(255,255,255,0.24)"
                               : "rgba(20,24,31,0.1)",
                         }}
-                        className="px-2 py-0.5 rounded-full text-[10px] font-semibold truncate w-fit max-w-full"
+                        className="px-1.5 sm:px-2 py-0.5 rounded-full text-[8.5px] sm:text-[10px] font-semibold truncate w-fit max-w-full"
                       >
-                        •{" "}
                         {singleTeamEntry.custom_name ||
-                          STATUS_META[singleTeamEntry.status]?.label}
+                          STATUS_META[singleTeamEntry.status]?.short}
                       </div>
                     )}
 
-                    {/* When viewing all teams, show Sunday/Holiday duty pills exactly like the original app */}
                     {!singleSelectedTeam && dayInfo?.campo_duty_label && (
                       <div
                         style={{
@@ -639,10 +892,11 @@ export default function PublicCalendarView({
                               ? "rgba(255,255,255,0.25)"
                               : "rgba(20,24,31,0.12)",
                         }}
-                        className="px-2 py-0.5 rounded-full text-[10.5px] font-semibold truncate w-fit max-w-full"
+                        className="px-1.5 sm:px-2 py-0.5 rounded-full text-[8.5px] sm:text-[10.5px] font-semibold truncate w-fit max-w-full leading-tight"
                         title={`Plantão Campo: ${dayInfo.campo_duty_label}`}
                       >
-                        • {dayInfo.campo_duty_label}
+                        <span className="hidden sm:inline">• </span>
+                        {dayInfo.campo_duty_label}
                       </div>
                     )}
 
@@ -654,14 +908,14 @@ export default function PublicCalendarView({
                               ? "rgba(255,255,255,0.25)"
                               : "rgba(20,24,31,0.12)",
                         }}
-                        className="px-2 py-0.5 rounded-full text-[10.5px] font-semibold truncate w-fit max-w-full"
+                        className="px-1.5 sm:px-2 py-0.5 rounded-full text-[8.5px] sm:text-[10.5px] font-semibold truncate w-fit max-w-full leading-tight"
                         title={`Plantão Atendimento: ${dayInfo.atendimento_duty_label}`}
                       >
-                        • {dayInfo.atendimento_duty_label}
+                        <span className="hidden sm:inline">• </span>
+                        {dayInfo.atendimento_duty_label}
                       </div>
                     )}
 
-                    {/* Badge if services were recorded on this day */}
                     {dayServices.length > 0 && (
                       <div
                         style={{
@@ -670,19 +924,19 @@ export default function PublicCalendarView({
                               ? "rgba(20,24,31,0.35)"
                               : "rgba(20,24,31,0.15)",
                         }}
-                        className="px-2 py-0.5 rounded-full text-[9.5px] font-semibold truncate w-fit max-w-full flex items-center gap-1"
+                        className="hidden sm:flex px-2 py-0.5 rounded-full text-[9.5px] font-semibold truncate w-fit max-w-full items-center gap-1"
                       >
                         <Briefcase className="w-2.5 h-2.5 shrink-0" />
                         <span>
                           {dayServices.length}{" "}
-                          {dayServices.length === 1 ? "serviço" : "serviços"}
+                          {dayServices.length === 1 ? "OS" : "OS"}
                         </span>
                       </div>
                     )}
                   </div>
 
-                  {/* Subtle bottom indicator of which group works Mon-Fri */}
-                  <div className="flex items-center justify-between text-[9px] opacity-75 font-medium">
+                  {/* Subtle bottom indicator on desktop */}
+                  <div className="hidden sm:flex items-center justify-between text-[9px] opacity-75 font-medium">
                     <span>
                       {wdIndex >= 1 && wdIndex <= 5
                         ? `Seg-Sex: Grp ${dayInfo?.mon_fri_group}`
@@ -701,19 +955,19 @@ export default function PublicCalendarView({
       )}
 
       {/* ===================================================================== */}
-      {/* VIEW 2: EQUIPES (DAILY STATUS MATRIX)                                 */}
+      {/* VIEW 2: EQUIPES (DAILY STATUS MATRIX - STICKY & TOUCH SCROLLABLE)     */}
       {/* ===================================================================== */}
       {viewMode === "equipes" && (
-        <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 shadow-[0_1px_2px_rgba(20,24,31,0.04)] overflow-x-auto">
+        <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-3 sm:p-4 shadow-[0_1px_2px_rgba(20,24,31,0.04)] overflow-x-auto">
           <div
             className="min-w-max"
             style={{
               display: "grid",
-              gridTemplateColumns: `200px repeat(${monthDays.length}, 30px)`,
+              gridTemplateColumns: `165px repeat(${monthDays.length}, 29px)`,
             }}
           >
             {/* Header Row */}
-            <div className="sticky left-0 z-10 bg-white pr-3 py-2 flex items-end text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8F98] border-b border-[#EBEBE6]">
+            <div className="sticky left-0 z-10 bg-white pr-2 py-2 flex items-end text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8F98] border-b border-[#EBEBE6]">
               EQUIPE
             </div>
             {monthDays.map((iso) => {
@@ -751,7 +1005,7 @@ export default function PublicCalendarView({
               );
             })}
 
-            {/* Group Section: Equipe de campo */}
+            {/* Equipe de campo */}
             {visibleTeams.some((t) => t.kind === "campo") && (
               <>
                 <div
@@ -764,10 +1018,10 @@ export default function PublicCalendarView({
                   .filter((t) => t.kind === "campo")
                   .map((team) => (
                     <React.Fragment key={team.id}>
-                      <div className="sticky left-0 z-10 bg-white pr-3 py-2.5 border-b border-[#F2F1EC] flex items-center justify-between">
-                        <div className="flex items-center gap-2 truncate">
+                      <div className="sticky left-0 z-10 bg-white pr-2 py-2.5 border-b border-[#F2F1EC] flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1.5 truncate">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#14181F] shrink-0" />
-                          <span className="text-[13px] font-medium text-[#14181F] truncate">
+                          <span className="text-[12.5px] font-medium text-[#14181F] truncate">
                             {team.name}
                           </span>
                         </div>
@@ -823,7 +1077,7 @@ export default function PublicCalendarView({
               </>
             )}
 
-            {/* Group Section: Atendimento */}
+            {/* Atendimento */}
             {visibleTeams.some((t) => t.kind === "atendimento") && (
               <>
                 <div
@@ -836,10 +1090,10 @@ export default function PublicCalendarView({
                   .filter((t) => t.kind === "atendimento")
                   .map((team) => (
                     <React.Fragment key={team.id}>
-                      <div className="sticky left-0 z-10 bg-white pr-3 py-2.5 border-b border-[#F2F1EC] flex items-center justify-between">
-                        <div className="flex items-center gap-2 truncate">
+                      <div className="sticky left-0 z-10 bg-white pr-2 py-2.5 border-b border-[#F2F1EC] flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1.5 truncate">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#8B5CF6] shrink-0" />
-                          <span className="text-[13px] font-medium text-[#14181F] truncate">
+                          <span className="text-[12.5px] font-medium text-[#14181F] truncate">
                             {team.name}
                           </span>
                         </div>
@@ -895,36 +1149,101 @@ export default function PublicCalendarView({
       )}
 
       {/* ===================================================================== */}
-      {/* VIEW 3: DIAS TRABALHADOS POR FUNCIONÁRIO (INDIVIDUAL BREAKDOWN)       */}
+      {/* VIEW 3: DIAS TRABALHADOS POR FUNCIONÁRIO (CARDS ON MOBILE, TABLE PC)  */}
       {/* ===================================================================== */}
       {viewMode === "funcionarios" && (
-        <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+        <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8F98]">
                 CONTROLE INDIVIDUAL · {formatMonthTitle(monthKey)}
               </div>
-              <h2 className="font-heading text-[19px] font-bold text-[#14181F] mt-0.5">
+              <h2 className="font-heading text-[18px] sm:text-[19px] font-bold text-[#14181F] mt-0.5">
                 Dias Trabalhados e Plantões por Funcionário
               </h2>
-              <p className="text-[13px] text-[#6B7280]">
-                Desmembramento automático por colaborador (incluindo duplas de
-                campo, plantões de domingo/feriado, trocas nominais e serviços).
+              <p className="text-[12.5px] sm:text-[13px] text-[#6B7280]">
+                Toque em qualquer funcionário para abrir a{" "}
+                <strong>Ficha Individual e Espelho Mensal</strong>.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-start sm:self-center">
               <div className="px-3.5 py-2 rounded-xl bg-[#FBFAF7] border border-[#EBEBE6] text-right">
                 <div className="text-[10px] uppercase tracking-wider text-[#8A8F98] font-semibold">
-                  Funcionários Ativos
+                  Colaboradores
                 </div>
-                <div className="font-heading text-[18px] font-bold text-[#14181F] tabular-nums">
+                <div className="font-heading text-[17px] font-bold text-[#14181F] tabular-nums">
                   {employeeSummary.length}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Mobile Card List (shown on screens < md) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 md:hidden">
+            {employeeSummary.map((emp) => (
+              <div
+                key={emp.name}
+                onClick={() => setSelectedEmployeeProfile(emp)}
+                className="p-3.5 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6] cursor-pointer active:scale-[0.99] transition"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`w-2.5 h-2.5 rounded-full ${
+                        emp.kind === "campo" ? "bg-[#10B981]" : "bg-[#8B5CF6]"
+                      }`}
+                    />
+                    <span className="font-heading font-bold text-[15px] text-[#14181F]">
+                      {emp.name}
+                    </span>
+                    <span className="text-[11px] text-[#8A8F98]">
+                      ({emp.teamName} · Grp {emp.group})
+                    </span>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-[#10B981]/15 text-[#065F46] font-bold text-[12px] tabular-nums">
+                    {emp.totalTrabalhado} dias
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 text-center pt-2 border-t border-[#EBEBE6]/70">
+                  <div className="bg-white rounded-lg p-1.5 border border-[#EBEBE6]">
+                    <div className="text-[9.5px] text-[#8A8F98] uppercase">
+                      Normais
+                    </div>
+                    <div className="text-[12.5px] font-bold text-[#14181F] tabular-nums">
+                      {emp.diasNormais}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg p-1.5 border border-[#EBEBE6]">
+                    <div className="text-[9.5px] text-[#C2410C] uppercase">
+                      Domingos
+                    </div>
+                    <div className="text-[12.5px] font-bold text-[#C2410C] tabular-nums">
+                      {emp.plantoesDomingo}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg p-1.5 border border-[#EBEBE6]">
+                    <div className="text-[9.5px] text-[#6D28D9] uppercase">
+                      Feriados
+                    </div>
+                    <div className="text-[12.5px] font-bold text-[#6D28D9] tabular-nums">
+                      {emp.plantoesFeriado}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg p-1.5 border border-[#EBEBE6]">
+                    <div className="text-[9.5px] text-[#8A8F98] uppercase">
+                      Folgas
+                    </div>
+                    <div className="text-[12.5px] font-bold text-[#6B7280] tabular-nums">
+                      {emp.folgas}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table (shown on md+) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-[#EBEBE6] text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8F98]">
@@ -945,7 +1264,8 @@ export default function PublicCalendarView({
                 {employeeSummary.map((emp) => (
                   <tr
                     key={emp.name}
-                    className="hover:bg-[#FBFAF7] transition-colors"
+                    onClick={() => setSelectedEmployeeProfile(emp)}
+                    className="hover:bg-[#FBFAF7] transition-colors cursor-pointer"
                   >
                     <td className="py-3 px-3 font-semibold text-[#14181F] flex items-center gap-2">
                       <span
@@ -953,7 +1273,9 @@ export default function PublicCalendarView({
                           emp.kind === "campo" ? "bg-[#10B981]" : "bg-[#8B5CF6]"
                         }`}
                       />
-                      {emp.name}
+                      <span className="underline decoration-[#D5D4CE] underline-offset-4">
+                        {emp.name}
+                      </span>
                     </td>
                     <td className="py-3 px-3 text-[#42474F]">
                       {emp.teamName}{" "}
@@ -1033,13 +1355,98 @@ export default function PublicCalendarView({
       )}
 
       {/* ===================================================================== */}
-      {/* VIEW 4: CONTROLE DE SERVIÇOS E ORDENS DE SERVIÇO DO MÊS               */}
+      {/* VIEW 4: RANKING E EQUILÍBRIO ANUAL DE PLANTÕES (JAN-DEZ)              */}
+      {/* ===================================================================== */}
+      {viewMode === "ranking" && (
+        <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+          <div className="pb-4 mb-4 border-b border-[#EBEBE6]">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8F98]">
+              EQUILÍBRIO DE ESCALA · ANO {selectedYear}
+            </div>
+            <h2 className="font-heading text-[18px] sm:text-[19px] font-bold text-[#14181F] mt-0.5">
+              Acumulado Anual de Plantões e Dias Trabalhados (Jan a Dez/
+              {selectedYear})
+            </h2>
+            <p className="text-[12.5px] sm:text-[13px] text-[#6B7280]">
+              Comparativo anual para garantir que todas as duplas e atendentes
+              façam uma quantidade justa e equilibrada de domingos e feriados.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {annualEmployeeSummary.map((emp) => {
+              const totalPlantoes =
+                emp.plantoesDomingo +
+                emp.plantoesFeriado +
+                emp.trocasTrabalhadas;
+              return (
+                <div
+                  key={emp.name}
+                  className="p-4 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6] flex flex-col justify-between gap-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2.5 h-2.5 rounded-full ${
+                            emp.kind === "campo"
+                              ? "bg-[#10B981]"
+                              : "bg-[#8B5CF6]"
+                          }`}
+                        />
+                        <span className="font-heading font-bold text-[15.5px] text-[#14181F]">
+                          {emp.name}
+                        </span>
+                      </div>
+                      <div className="text-[11.5px] text-[#6B7280] mt-0.5">
+                        {emp.teamName} · Grupo {emp.group}
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-[#14181F] text-white text-[11.5px] font-bold tabular-nums">
+                      {emp.totalTrabalhado} dias/ano
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="p-2 rounded-xl bg-white border border-[#EBEBE6]">
+                      <div className="text-[10px] font-semibold text-[#C2410C] uppercase">
+                        Domingos
+                      </div>
+                      <div className="font-heading text-[16px] font-bold text-[#C2410C] tabular-nums">
+                        {emp.plantoesDomingo}
+                      </div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-white border border-[#EBEBE6]">
+                      <div className="text-[10px] font-semibold text-[#6D28D9] uppercase">
+                        Feriados
+                      </div>
+                      <div className="font-heading text-[16px] font-bold text-[#6D28D9] tabular-nums">
+                        {emp.plantoesFeriado}
+                      </div>
+                    </div>
+                    <div className="p-2 rounded-xl bg-white border border-[#EBEBE6]">
+                      <div className="text-[10px] font-semibold text-[#065F46] uppercase">
+                        Total Plantões
+                      </div>
+                      <div className="font-heading text-[16px] font-bold text-[#065F46] tabular-nums">
+                        {totalPlantoes}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* VIEW 5: CONTROLE DE SERVIÇOS E ORDENS DE SERVIÇO DO MÊS               */}
       {/* ===================================================================== */}
       {viewMode === "servicos" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left card: New Service Form (ONLY FOR ADMIN) */}
           {isAdmin && (
-            <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)] h-fit">
+            <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)] h-fit">
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8F98]">
                 NOVO REGISTRO (MODO ADMIN)
               </div>
@@ -1187,11 +1594,10 @@ export default function PublicCalendarView({
             </div>
           )}
 
-          {/* Right card: List of services in the month */}
           <div
             className={`${
               isAdmin ? "lg:col-span-2" : "lg:col-span-3"
-            } bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]`}
+            } bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]`}
           >
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#EBEBE6]">
               <div>
@@ -1266,34 +1672,34 @@ export default function PublicCalendarView({
       {/* ===================================================================== */}
       {/* LEGENDA (EXACT REPLICA OF BASE44 LEGEND BAR)                          */}
       {/* ===================================================================== */}
-      <div className="mt-4 bg-white border border-[#EBEBE6] rounded-[18px] p-4 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5">
+      <div className="mt-4 bg-white border border-[#EBEBE6] rounded-[18px] p-3.5 sm:p-4 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+        <div className="flex flex-wrap items-center gap-x-4 sm:gap-x-5 gap-y-2">
           <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8F98] mr-1">
             LEGENDA
           </span>
 
           {COLOR_SETTINGS.map((item) => (
-            <div key={item.key} className="inline-flex items-center gap-2">
+            <div key={item.key} className="inline-flex items-center gap-1.5 sm:gap-2">
               <span
                 style={{ backgroundColor: colors[item.key] }}
-                className="w-3.5 h-3.5 rounded-[5px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)]"
+                className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-[5px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.1)] shrink-0"
               />
-              <span className="text-[12.5px] text-[#42474F] font-medium">
+              <span className="text-[11.5px] sm:text-[12.5px] text-[#42474F] font-medium">
                 {item.label}
               </span>
             </div>
           ))}
 
-          <div className="inline-flex items-center gap-2">
-            <span className="w-3.5 h-3.5 rounded-[5px] border border-[#EF4444] bg-white" />
-            <span className="text-[12.5px] text-[#42474F] font-medium">
-              Feriado nacional / estadual / municipal
+          <div className="inline-flex items-center gap-1.5 sm:gap-2">
+            <span className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-[5px] border border-[#EF4444] bg-white shrink-0" />
+            <span className="text-[11.5px] sm:text-[12.5px] text-[#42474F] font-medium">
+              Feriado oficial
             </span>
           </div>
 
-          <div className="inline-flex items-center gap-2">
-            <span className="w-3.5 h-3.5 rounded-[5px] border-2 border-dashed border-[#EAB308] bg-white" />
-            <span className="text-[12.5px] text-[#42474F] font-medium">
+          <div className="inline-flex items-center gap-1.5 sm:gap-2">
+            <span className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-[5px] border-2 border-dashed border-[#EAB308] bg-white shrink-0" />
+            <span className="text-[11.5px] sm:text-[12.5px] text-[#42474F] font-medium">
               Ponto facultativo
             </span>
           </div>
@@ -1301,15 +1707,127 @@ export default function PublicCalendarView({
       </div>
 
       {/* ===================================================================== */}
-      {/* DAY DETAIL & QUICK SERVICE MODAL (WHEN CLICKING ANY DAY)              */}
+      {/* INDIVIDUAL EMPLOYEE SHEET MODAL (ESPELHO MENSAL DO COLABORADOR)       */}
+      {/* ===================================================================== */}
+      {selectedEmployeeProfile && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px] flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => setSelectedEmployeeProfile(null)}
+        >
+          <div
+            className="bg-white border border-[#EBEBE6] rounded-t-[24px] sm:rounded-[22px] max-w-xl w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 pb-4 border-b border-[#EBEBE6]">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8F98]">
+                  FICHA INDIVIDUAL · {formatMonthTitle(monthKey)}
+                </div>
+                <h3 className="font-heading text-[22px] font-bold text-[#14181F] mt-0.5">
+                  {selectedEmployeeProfile.name}
+                </h3>
+                <p className="text-[12.5px] text-[#6B7280]">
+                  Equipe: {selectedEmployeeProfile.teamName} · Setor:{" "}
+                  {selectedEmployeeProfile.kind === "campo"
+                    ? "Campo"
+                    : "Atendimento"}{" "}
+                  (Grupo {selectedEmployeeProfile.group})
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="w-8 h-8 rounded-full bg-[#F4F3EE] flex items-center justify-center text-[#14181F] hover:bg-[#E5E4DF]"
+                  title="Imprimir Ficha"
+                >
+                  <Printer className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setSelectedEmployeeProfile(null)}
+                  className="w-8 h-8 rounded-full bg-[#F4F3EE] flex items-center justify-center text-[#42474F] hover:bg-[#E5E4DF]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 my-4">
+              <div className="p-3 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6] text-center">
+                <div className="text-[10px] font-semibold uppercase text-[#8A8F98]">
+                  Dias Normais
+                </div>
+                <div className="font-heading text-[20px] font-bold text-[#14181F] tabular-nums">
+                  {selectedEmployeeProfile.diasNormais}
+                </div>
+              </div>
+              <div className="p-3 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6] text-center">
+                <div className="text-[10px] font-semibold uppercase text-[#C2410C]">
+                  Domingos
+                </div>
+                <div className="font-heading text-[20px] font-bold text-[#C2410C] tabular-nums">
+                  {selectedEmployeeProfile.plantoesDomingo}
+                </div>
+              </div>
+              <div className="p-3 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6] text-center">
+                <div className="text-[10px] font-semibold uppercase text-[#6D28D9]">
+                  Feriados
+                </div>
+                <div className="font-heading text-[20px] font-bold text-[#6D28D9] tabular-nums">
+                  {selectedEmployeeProfile.plantoesFeriado}
+                </div>
+              </div>
+              <div className="p-3 rounded-2xl bg-[#10B981]/15 border border-[#10B981]/30 text-center">
+                <div className="text-[10px] font-semibold uppercase text-[#065F46]">
+                  Total Mês
+                </div>
+                <div className="font-heading text-[20px] font-bold text-[#065F46] tabular-nums">
+                  {selectedEmployeeProfile.totalTrabalhado}d
+                </div>
+              </div>
+            </div>
+
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8A8F98] mb-2">
+              DIAS TRABALHADOS NO MÊS ({selectedEmployeeProfile.datesWorked.length})
+            </div>
+            <div className="max-h-[260px] overflow-y-auto divide-y divide-[#F2F1EC] border border-[#EBEBE6] rounded-2xl px-3.5">
+              {selectedEmployeeProfile.datesWorked.map((dw, i) => (
+                <div
+                  key={`${dw.date}-${i}`}
+                  className="py-2 flex items-center justify-between text-[12.5px]"
+                >
+                  <span className="font-mono font-semibold text-[#14181F] tabular-nums">
+                    {formatShortDate(dw.date)}
+                  </span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                      dw.type.includes("domingo")
+                        ? "bg-[#F97316]/15 text-[#C2410C]"
+                        : dw.type.includes("feriado")
+                        ? "bg-[#8B5CF6]/15 text-[#6D28D9]"
+                        : dw.type.includes("Troca")
+                        ? "bg-[#3B82F6]/15 text-[#1D4ED8]"
+                        : "bg-[#10B981]/15 text-[#065F46]"
+                    }`}
+                  >
+                    {dw.type}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* DAY DETAILMODAL (WHEN CLICKING ANY DAY)                               */}
       {/* ===================================================================== */}
       {modalDate && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px] flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px] flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={() => setModalDate(null)}
         >
           <div
-            className="bg-white border border-[#EBEBE6] rounded-[22px] max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl"
+            className="bg-white border border-[#EBEBE6] rounded-t-[24px] sm:rounded-[22px] max-w-2xl w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             {(() => {
@@ -1338,7 +1856,7 @@ export default function PublicCalendarView({
                         DETALHES DO DIA · SEMANA SEG-SEX GRUPO{" "}
                         {info?.mon_fri_group}
                       </div>
-                      <h3 className="font-heading text-[22px] font-bold text-[#14181F] mt-0.5">
+                      <h3 className="font-heading text-[20px] sm:text-[22px] font-bold text-[#14181F] mt-0.5">
                         {formatShortDate(modalDate)}
                         {info?.holiday ? ` — ${info.holiday.name}` : ""}
                       </h3>
@@ -1351,7 +1869,6 @@ export default function PublicCalendarView({
                     </button>
                   </div>
 
-                  {/* Duty Highlights */}
                   {(info?.campo_duty_label || info?.atendimento_duty_label) && (
                     <div className="mt-4 p-3.5 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6] flex flex-wrap items-center gap-4">
                       {info?.campo_duty_label && (
@@ -1377,7 +1894,6 @@ export default function PublicCalendarView({
                     </div>
                   )}
 
-                  {/* Teams status grid on this date */}
                   <div className="mt-4">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8A8F98] mb-2">
                       SITUAÇÃO DE CADA EQUIPE NO DIA
@@ -1422,7 +1938,6 @@ export default function PublicCalendarView({
                     </div>
                   </div>
 
-                  {/* Services logged on this date */}
                   <div className="mt-5 pt-4 border-t border-[#EBEBE6]">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8A8F98] mb-2">
                       SERVIÇOS REALIZADOS NESTE DIA ({daySrv.length})
@@ -1463,7 +1978,6 @@ export default function PublicCalendarView({
                       </div>
                     )}
 
-                    {/* Quick Add Service for this date (ONLY FOR ADMIN) */}
                     {isAdmin && (
                       <form
                         onSubmit={handleCreateService}
@@ -1499,7 +2013,7 @@ export default function PublicCalendarView({
                             className="h-9 px-3 rounded-xl border border-[#E5E4DF] bg-white text-[12.5px]"
                           />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <input
                             type="text"
                             value={serviceForm.notes}

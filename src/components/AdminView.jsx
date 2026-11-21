@@ -917,8 +917,8 @@ export default function AdminView({
         </div>
       </div>
 
-      {/* Radix-style Navigation Tabs */}
-      <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl bg-[#F3F2ED] border border-[#E8E7E1] mb-6 w-fit no-print">
+      {/* Radix-style Navigation Tabs (Scrollable on Mobile) */}
+      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-[#F3F2ED] border border-[#E8E7E1] mb-6 w-full sm:w-fit overflow-x-auto no-print">
         {ADMIN_TABS.map((t) => {
           const Icon = t.icon;
           const active = activeTab === t.id;
@@ -926,13 +926,13 @@ export default function AdminView({
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id)}
-              className={`inline-flex items-center gap-2 px-4 h-9 rounded-xl text-[13px] font-semibold transition ${
+              className={`inline-flex items-center gap-2 px-3.5 sm:px-4 h-9 rounded-xl text-[12.5px] sm:text-[13px] font-semibold transition whitespace-nowrap shrink-0 ${
                 active
                   ? "bg-white text-[#14181F] shadow-sm"
                   : "text-[#6B7280] hover:text-[#14181F]"
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
+              <Icon className="w-3.5 h-3.5 shrink-0" />
               <span>{t.label}</span>
             </button>
           );
@@ -2345,11 +2345,100 @@ export default function AdminView({
             </div>
           </div>
 
-          {/* Card 2: Relatório Individual por Funcionário */}
-          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
-            <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-3">
-              Total Individual por Funcionário — {formatMonthTitle(reportMonth)}
-            </h2>
+          {/* Card 2: Relatório Individual por Funcionário + Cálculo Financeiro de Diárias */}
+          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
+              <div>
+                <h2 className="font-heading text-[17px] font-bold text-[#14181F]">
+                  Total Individual e Cálculo de Diárias —{" "}
+                  {formatMonthTitle(reportMonth)}
+                </h2>
+                <p className="text-[12.5px] text-[#6B7280]">
+                  Configure os valores unitários abaixo (visível apenas no
+                  Admin) para calcular automaticamente o total financeiro de
+                  cada colaborador.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 no-print">
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase text-[#8A8F98]">
+                    Dia Normal (R$)
+                  </label>
+                  <input
+                    type="number"
+                    value={appState.settings.rate_dia_normal ?? 0}
+                    onChange={(e) =>
+                      setAppState((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          rate_dia_normal: Number(e.target.value),
+                        },
+                      }))
+                    }
+                    className="w-full h-8 px-2.5 rounded-lg border border-[#E5E4DF] text-[12px] font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase text-[#C2410C]">
+                    Plantão Dom. (R$)
+                  </label>
+                  <input
+                    type="number"
+                    value={appState.settings.rate_plantao_domingo ?? 150}
+                    onChange={(e) =>
+                      setAppState((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          rate_plantao_domingo: Number(e.target.value),
+                        },
+                      }))
+                    }
+                    className="w-full h-8 px-2.5 rounded-lg border border-[#E5E4DF] text-[12px] font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase text-[#6D28D9]">
+                    Plantão Fer. (R$)
+                  </label>
+                  <input
+                    type="number"
+                    value={appState.settings.rate_plantao_feriado ?? 180}
+                    onChange={(e) =>
+                      setAppState((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          rate_plantao_feriado: Number(e.target.value),
+                        },
+                      }))
+                    }
+                    className="w-full h-8 px-2.5 rounded-lg border border-[#E5E4DF] text-[12px] font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase text-[#065F46]">
+                    Bônus/OS (R$)
+                  </label>
+                  <input
+                    type="number"
+                    value={appState.settings.rate_servico_bonus ?? 0}
+                    onChange={(e) =>
+                      setAppState((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          rate_servico_bonus: Number(e.target.value),
+                        },
+                      }))
+                    }
+                    className="w-full h-8 px-2.5 rounded-lg border border-[#E5E4DF] text-[12px] font-semibold"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-[13px]">
                 <thead>
@@ -2364,37 +2453,66 @@ export default function AdminView({
                     <th className="py-2.5 px-2.5 text-right">
                       Dias Trabalhados
                     </th>
+                    <th className="py-2.5 px-2.5 text-right">
+                      Valor Estimado (R$)
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F2F1EC]">
-                  {employeeReport.map((emp) => (
-                    <tr key={emp.name} className="hover:bg-[#FBFAF7]">
-                      <td className="py-2.5 px-2.5 font-semibold text-[#14181F]">
-                        {emp.name}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-[#6B7280]">
-                        {emp.teamName}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-center tabular-nums">
-                        {emp.diasNormais}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-center tabular-nums">
-                        {emp.plantoesDomingo}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-center tabular-nums">
-                        {emp.plantoesFeriado}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-center tabular-nums">
-                        {emp.trocasTrabalhadas}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-center tabular-nums font-semibold">
-                        {emp.servicosCount}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-right tabular-nums font-bold text-[#065F46]">
-                        {emp.totalTrabalhado} dias
-                      </td>
-                    </tr>
-                  ))}
+                  {employeeReport.map((emp) => {
+                    const rNorm = Number(
+                      appState.settings.rate_dia_normal ?? 0
+                    );
+                    const rDom = Number(
+                      appState.settings.rate_plantao_domingo ?? 150
+                    );
+                    const rFer = Number(
+                      appState.settings.rate_plantao_feriado ?? 180
+                    );
+                    const rSrv = Number(
+                      appState.settings.rate_servico_bonus ?? 0
+                    );
+                    const totalFinanceiro =
+                      emp.diasNormais * rNorm +
+                      emp.plantoesDomingo * rDom +
+                      (emp.plantoesFeriado + emp.trocasTrabalhadas) * rFer +
+                      emp.servicosCount * rSrv;
+
+                    return (
+                      <tr key={emp.name} className="hover:bg-[#FBFAF7]">
+                        <td className="py-2.5 px-2.5 font-semibold text-[#14181F]">
+                          {emp.name}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-[#6B7280]">
+                          {emp.teamName}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-center tabular-nums">
+                          {emp.diasNormais}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-center tabular-nums">
+                          {emp.plantoesDomingo}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-center tabular-nums">
+                          {emp.plantoesFeriado}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-center tabular-nums">
+                          {emp.trocasTrabalhadas}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-center tabular-nums font-semibold">
+                          {emp.servicosCount}
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right tabular-nums font-bold text-[#065F46]">
+                          {emp.totalTrabalhado} dias
+                        </td>
+                        <td className="py-2.5 px-2.5 text-right tabular-nums font-bold text-[#14181F]">
+                          {totalFinanceiro.toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

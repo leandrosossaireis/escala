@@ -64,6 +64,10 @@ export const DEFAULT_SETTINGS = {
   color_feriado: LIVE_COLORS.feriado,
   color_alteracao: LIVE_COLORS.alteracao,
   color_ferias: LIVE_COLORS.ferias,
+  rate_dia_normal: 0,
+  rate_plantao_domingo: 150,
+  rate_plantao_feriado: 180,
+  rate_servico_bonus: 0,
 };
 
 export const HOLIDAY_LABELS = {
