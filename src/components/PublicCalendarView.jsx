@@ -726,6 +726,7 @@ export default function PublicCalendarView({
               const wdIndex = getWeekday(iso);
               const wdShort = WEEKDAY_HEADERS[wdIndex === 0 ? 6 : wdIndex - 1];
               const isToday = iso === todayIso;
+              const isPast = iso < todayIso;
               const isFocused = iso === focusedDate;
               const dayServices = servicesByDate[iso] || [];
 
@@ -786,9 +787,15 @@ export default function PublicCalendarView({
                   style={{
                     backgroundColor: isDimmedByFilter ? "#F7F6F2" : bgHex,
                     color: isDimmedByFilter ? "#9CA3AF" : fgHex,
+                    opacity: isDimmedByFilter ? 0.45 : isPast ? 0.52 : 1,
+                    filter: isPast && !isDimmedByFilter ? "saturate(0.78)" : "none",
                   }}
-                  className={`min-h-[68px] sm:min-h-[112px] rounded-[10px] sm:rounded-[13px] p-1.5 sm:p-2.5 transition cursor-pointer flex flex-col justify-between relative hover:brightness-[0.98] active:scale-[0.99] ${
-                    isFocused ? "ring-2 ring-[#14181F] ring-offset-1 sm:ring-offset-2" : ""
+                  className={`min-h-[68px] sm:min-h-[112px] rounded-[10px] sm:rounded-[13px] p-1.5 sm:p-2.5 transition cursor-pointer flex flex-col justify-between relative hover:!opacity-95 active:scale-[0.99] ${
+                    isFocused
+                      ? "ring-2 ring-[#14181F] ring-offset-1 sm:ring-offset-2"
+                      : isToday
+                      ? "ring-2 ring-[#14181F]/80 ring-offset-1 shadow-md"
+                      : ""
                   } ${
                     isFacultativo
                       ? "border-2 border-dashed border-[#EAB308]"
@@ -939,6 +946,7 @@ export default function PublicCalendarView({
               const wd = getWeekday(iso);
               const isSun = wd === 0;
               const isToday = iso === todayIso;
+              const isPast = iso < todayIso;
               return (
                 <div
                   key={iso}
@@ -949,7 +957,7 @@ export default function PublicCalendarView({
                       : isSun
                       ? "bg-[#FAFAF5]"
                       : ""
-                  }`}
+                  } ${isPast ? "opacity-55" : ""}`}
                 >
                   <div className="text-[9px] font-semibold text-[#A3A8B1]">
                     {SHORT_WEEKDAYS[wd]}
@@ -1002,6 +1010,7 @@ export default function PublicCalendarView({
                         const wd = getWeekday(iso);
                         const isSun = wd === 0;
                         const isToday = iso === todayIso;
+                        const isPast = iso < todayIso;
                         const matchesStatus =
                           selectedStatus === "all" || st === selectedStatus;
                         const matchesHol =
@@ -1029,9 +1038,14 @@ export default function PublicCalendarView({
                             <span
                               style={{
                                 backgroundColor: dotColor,
-                                opacity: matchesStatus && matchesHol ? 1 : 0.18,
+                                opacity:
+                                  !matchesStatus || !matchesHol
+                                    ? 0.15
+                                    : isPast
+                                    ? 0.45
+                                    : 1,
                               }}
-                              className="w-3.5 h-3.5 rounded-full transition-transform hover:scale-125 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)]"
+                              className="w-3.5 h-3.5 rounded-full transition-transform hover:scale-125 hover:!opacity-100 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)]"
                             />
                           </div>
                         );
@@ -1074,6 +1088,7 @@ export default function PublicCalendarView({
                         const wd = getWeekday(iso);
                         const isSun = wd === 0;
                         const isToday = iso === todayIso;
+                        const isPast = iso < todayIso;
                         const matchesStatus =
                           selectedStatus === "all" || st === selectedStatus;
                         const matchesHol =
@@ -1097,9 +1112,14 @@ export default function PublicCalendarView({
                             <span
                               style={{
                                 backgroundColor: dotColor,
-                                opacity: matchesStatus && matchesHol ? 1 : 0.18,
+                                opacity:
+                                  !matchesStatus || !matchesHol
+                                    ? 0.15
+                                    : isPast
+                                    ? 0.45
+                                    : 1,
                               }}
-                              className="w-3.5 h-3.5 rounded-full transition-transform hover:scale-125 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)]"
+                              className="w-3.5 h-3.5 rounded-full transition-transform hover:scale-125 hover:!opacity-100 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)]"
                             />
                           </div>
                         );
