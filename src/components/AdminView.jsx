@@ -14,7 +14,17 @@ import {
   BarChart3,
   Briefcase,
   Upload,
+  Shield,
+  CloudUpload,
+  LogOut,
 } from "lucide-react";
+import {
+  getAdminCredentials,
+  saveAdminCredentials,
+  getGitHubSyncConfig,
+  saveGitHubSyncConfig,
+  publishStateToGitHub,
+} from "../lib/store";
 import {
   STATUS_META,
   COLOR_SETTINGS,
@@ -42,12 +52,14 @@ const ADMIN_TABS = [
   { id: "servicos", label: "Serviços e Diárias", icon: Briefcase },
   { id: "cores", label: "Cores", icon: Palette },
   { id: "relatorios", label: "Relatórios", icon: BarChart3 },
+  { id: "seguranca", label: "Segurança e Publicação", icon: Shield },
 ];
 
 export default function AdminView({
   appState,
   setAppState,
   onResetAll,
+  onLogout,
   notify,
 }) {
   const [activeTab, setActiveTab] = useState("escala");
@@ -165,6 +177,51 @@ export default function AdminView({
   // Tab 7: Relatórios State
   // ---------------------------------------------------------------------------
   const [reportMonth, setReportMonth] = useState("2026-11");
+
+  // ---------------------------------------------------------------------------
+  // Tab 8: Segurança e Publicação Online State
+  // ---------------------------------------------------------------------------
+  const [credForm, setCredForm] = useState(() => getAdminCredentials());
+  const [ghConfig, setGhConfig] = useState(() => getGitHubSyncConfig());
+  const [publishing, setPublishing] = useState(false);
+
+  async function handlePublishToGitHub() {
+    if (!ghConfig.token) {
+      setActiveTab("seguranca");
+      notify?.(
+        "Informe seu Token do GitHub na aba 'Segurança e Publicação' para publicar online para todos!",
+        "error"
+      );
+      return;
+    }
+    try {
+      setPublishing(true);
+      await publishStateToGitHub(appState, ghConfig);
+      notify?.(
+        "Escala publicada no GitHub! Todos que abrirem o link verão os novos dados."
+      );
+    } catch (err) {
+      notify?.(err.message || "Falha ao publicar no GitHub.", "error");
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  function handleSaveCredentials(e) {
+    e.preventDefault();
+    if (!credForm.password || credForm.password.length < 3) {
+      notify?.("A senha precisa ter pelo menos 3 caracteres.", "error");
+      return;
+    }
+    saveAdminCredentials(credForm);
+    notify?.("Credenciais de Administrador atualizadas!");
+  }
+
+  function handleSaveGhConfig(e) {
+    e.preventDefault();
+    saveGitHubSyncConfig(ghConfig);
+    notify?.("Configuração do GitHub salva neste navegador!");
+  }
 
   const activeTeams = useMemo(
     () =>
@@ -818,6 +875,19 @@ export default function AdminView({
         <div className="flex flex-wrap items-center gap-2 no-print">
           <button
             type="button"
+            disabled={publishing}
+            onClick={handlePublishToGitHub}
+            className="h-9 px-4 rounded-full bg-[#10B981] text-white text-[12.5px] font-semibold hover:bg-[#059669] transition inline-flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+          >
+            <CloudUpload className="w-3.5 h-3.5" />
+            <span>
+              {publishing
+                ? "Publicando..."
+                : "Publicar Online para Todos"}
+            </span>
+          </button>
+          <button
+            type="button"
             onClick={handleExportBackupJson}
             className="h-9 px-3.5 rounded-full bg-white border border-[#E5E4DF] text-[12.5px] font-medium text-[#14181F] hover:bg-[#F4F3EE] transition inline-flex items-center gap-1.5"
           >
@@ -834,6 +904,16 @@ export default function AdminView({
               className="hidden"
             />
           </label>
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="h-9 px-3.5 rounded-full bg-white border border-[#EF4444]/30 text-[12.5px] font-medium text-[#EF4444] hover:bg-[#EF4444]/10 transition inline-flex items-center gap-1.5"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sair do Admin</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -2345,6 +2425,138 @@ export default function AdminView({
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* TAB 8: SEGURANÇA E PUBLICAÇÃO ONLINE                                  */}
+      {/* ===================================================================== */}
+      {activeTab === "seguranca" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Card 1: Senha do Administrador */}
+          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+            <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-1">
+              Acesso Restrito do Administrador
+            </h2>
+            <p className="text-[13px] text-[#6B7280] mb-4">
+              Qualquer pessoa que abrir o link do site verá apenas o modo de
+              **Consulta Livre (Somente Leitura)**. Somente quem fizer login com
+              o usuário e senha abaixo pode editar a escala ou lançar serviços.
+            </p>
+            <form onSubmit={handleSaveCredentials} className="space-y-3">
+              <div>
+                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                  Usuário ou E-mail do Admin
+                </label>
+                <input
+                  type="text"
+                  value={credForm.email}
+                  onChange={(e) =>
+                    setCredForm({ ...credForm, email: e.target.value })
+                  }
+                  placeholder="admin"
+                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                  Senha do Administrador
+                </label>
+                <input
+                  type="password"
+                  value={credForm.password}
+                  onChange={(e) =>
+                    setCredForm({ ...credForm, password: e.target.value })
+                  }
+                  placeholder="Digite a nova senha"
+                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                className="px-5 h-10 rounded-full bg-[#14181F] text-white text-[13px] font-semibold hover:bg-[#272D38] transition"
+              >
+                Salvar Senha de Admin
+              </button>
+            </form>
+          </div>
+
+          {/* Card 2: Publicação Direta no GitHub Pages */}
+          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+            <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-1">
+              Sincronização Online com o GitHub Pages
+            </h2>
+            <p className="text-[13px] text-[#6B7280] mb-4">
+              Para que as alterações que você fizer no painel apareçam
+              automaticamente no celular/computador de todas as equipes ao
+              clicar em <strong>&quot;Publicar Online para Todos&quot;</strong>,
+              informe um Personal Access Token (PAT) do GitHub com permissão{" "}
+              <code>repo</code>.
+            </p>
+            <form onSubmit={handleSaveGhConfig} className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                    Usuário GitHub
+                  </label>
+                  <input
+                    type="text"
+                    value={ghConfig.owner}
+                    onChange={(e) =>
+                      setGhConfig({ ...ghConfig, owner: e.target.value })
+                    }
+                    className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                    Repositório
+                  </label>
+                  <input
+                    type="text"
+                    value={ghConfig.repo}
+                    onChange={(e) =>
+                      setGhConfig({ ...ghConfig, repo: e.target.value })
+                    }
+                    className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                  Token do GitHub (Personal Access Token - salvo apenas no seu
+                  navegador)
+                </label>
+                <input
+                  type="password"
+                  value={ghConfig.token}
+                  onChange={(e) =>
+                    setGhConfig({ ...ghConfig, token: e.target.value })
+                  }
+                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="submit"
+                  className="px-5 h-10 rounded-full bg-[#14181F] text-white text-[13px] font-semibold hover:bg-[#272D38] transition"
+                >
+                  Salvar Token
+                </button>
+                <button
+                  type="button"
+                  disabled={publishing}
+                  onClick={handlePublishToGitHub}
+                  className="px-5 h-10 rounded-full bg-[#10B981] text-white text-[13px] font-semibold hover:bg-[#059669] transition"
+                >
+                  {publishing ? "Publicando..." : "Publicar Agora"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

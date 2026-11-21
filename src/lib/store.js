@@ -9,25 +9,47 @@ import {
 } from "./schedule";
 
 const STORAGE_KEY = "escala_facil_pro_v2_state";
+const AUTH_SESSION_KEY = "escala_facil_pro_admin_session";
+const ADMIN_AUTH_KEY = "escala_facil_pro_admin_cred";
+const GITHUB_SYNC_KEY = "escala_facil_pro_github_sync";
+
+export function normalizeState(parsed) {
+  return {
+    settings: { ...DEFAULT_SETTINGS, ...(parsed?.settings || {}) },
+    teams: Array.isArray(parsed?.teams) ? parsed.teams : INITIAL_TEAMS,
+    holidays: Array.isArray(parsed?.holidays) ? parsed.holidays : INITIAL_HOLIDAYS,
+    overrides: Array.isArray(parsed?.overrides) ? parsed.overrides : INITIAL_OVERRIDES,
+    absences: Array.isArray(parsed?.absences) ? parsed.absences : INITIAL_ABSENCES,
+    weekOverrides: Array.isArray(parsed?.weekOverrides) ? parsed.weekOverrides : [],
+    dutyOverrides: Array.isArray(parsed?.dutyOverrides) ? parsed.dutyOverrides : INITIAL_DUTY_OVERRIDES,
+    services: Array.isArray(parsed?.services) ? parsed.services : INITIAL_SERVICES,
+  };
+}
 
 export function loadAppState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return getInitialState();
-    const parsed = JSON.parse(raw);
-    return {
-      settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) },
-      teams: Array.isArray(parsed.teams) ? parsed.teams : INITIAL_TEAMS,
-      holidays: Array.isArray(parsed.holidays) ? parsed.holidays : INITIAL_HOLIDAYS,
-      overrides: Array.isArray(parsed.overrides) ? parsed.overrides : INITIAL_OVERRIDES,
-      absences: Array.isArray(parsed.absences) ? parsed.absences : INITIAL_ABSENCES,
-      weekOverrides: Array.isArray(parsed.weekOverrides) ? parsed.weekOverrides : [],
-      dutyOverrides: Array.isArray(parsed.dutyOverrides) ? parsed.dutyOverrides : INITIAL_DUTY_OVERRIDES,
-      services: Array.isArray(parsed.services) ? parsed.services : INITIAL_SERVICES,
-    };
+    return normalizeState(JSON.parse(raw));
   } catch (e) {
     console.error("Failed to load state from localStorage:", e);
     return getInitialState();
+  }
+}
+
+export async function fetchPublishedEscalaData() {
+  try {
+    const res = await fetch(`./escala-data.json?t=${Date.now()}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && data.teams && data.settings) {
+      return normalizeState(data);
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 
@@ -55,4 +77,130 @@ export function saveAppState(state) {
 export function resetAppState() {
   localStorage.removeItem(STORAGE_KEY);
   return getInitialState();
+}
+
+// ============================================================================
+// Admin Authentication (Only admin can enter /admin or mutate data)
+// ============================================================================
+
+export function getAdminCredentials() {
+  try {
+    const raw = localStorage.getItem(ADMIN_AUTH_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.password) return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return {
+    email: "admin",
+    password: "admin", // Default initial password (admin can change it inside Admin -> Segurança)
+  };
+}
+
+export function saveAdminCredentials({ email, password }) {
+  localStorage.setItem(
+    ADMIN_AUTH_KEY,
+    JSON.stringify({ email: email.trim(), password })
+  );
+}
+
+export function isAdminLoggedIn() {
+  try {
+    return sessionStorage.getItem(AUTH_SESSION_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function setAdminLoggedIn(loggedIn) {
+  try {
+    if (loggedIn) {
+      sessionStorage.setItem(AUTH_SESSION_KEY, "true");
+    } else {
+      sessionStorage.removeItem(AUTH_SESSION_KEY);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// ============================================================================
+// Optional GitHub Repository Cloud Sync (publishes changes to public/escala-data.json)
+// ============================================================================
+
+export function getGitHubSyncConfig() {
+  try {
+    const raw = localStorage.getItem(GITHUB_SYNC_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore
+  }
+  return {
+    owner: "leandrosossaireis",
+    repo: "escala",
+    branch: "main",
+    token: "",
+  };
+}
+
+export function saveGitHubSyncConfig(cfg) {
+  localStorage.setItem(GITHUB_SYNC_KEY, JSON.stringify(cfg));
+}
+
+export async function publishStateToGitHub(appState, config) {
+  const { owner, repo, branch, token } = config;
+  if (!token) {
+    throw new Error("Configure o Token do GitHub na aba Segurança / Publicação para publicar online.");
+  }
+
+  const path = "public/escala-data.json";
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+
+  // 1. Get current file SHA if it exists
+  let sha = undefined;
+  const getRes = await fetch(`${apiUrl}?ref=${branch}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+    },
+  });
+
+  if (getRes.ok) {
+    const existing = await getRes.json();
+    sha = existing.sha;
+  }
+
+  // 2. Encode JSON in UTF-8 Base64
+  const jsonString = JSON.stringify(appState, null, 2);
+  const utf8Bytes = new TextEncoder().encode(jsonString);
+  let binary = "";
+  for (let i = 0; i < utf8Bytes.length; i++) {
+    binary += String.fromCharCode(utf8Bytes[i]);
+  }
+  const base64Content = btoa(binary);
+
+  // 3. Commit updated public/escala-data.json to GitHub
+  const putRes = await fetch(apiUrl, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      message: `chore: atualização da escala operacional (${new Date().toLocaleString("pt-BR")})`,
+      content: base64Content,
+      branch: branch || "main",
+      ...(sha ? { sha } : {}),
+    }),
+  });
+
+  if (!putRes.ok) {
+    const errBody = await putRes.json().catch(() => ({}));
+    throw new Error(errBody.message || `Erro HTTP ${putRes.status} ao publicar no GitHub.`);
+  }
+
+  return await putRes.json();
 }

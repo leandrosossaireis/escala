@@ -36,6 +36,7 @@ const SHORT_WEEKDAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 export default function PublicCalendarView({
   appState,
+  isAdmin = false,
   onAddService,
   onDeleteService,
   notify,
@@ -1036,160 +1037,166 @@ export default function PublicCalendarView({
       {/* ===================================================================== */}
       {viewMode === "servicos" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left card: New Service Form */}
-          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)] h-fit">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8F98]">
-              NOVO REGISTRO
-            </div>
-            <h2 className="font-heading text-[18px] font-bold text-[#14181F] mt-0.5 mb-3">
-              Lançar Serviço / Atendimento
-            </h2>
-            <form onSubmit={handleCreateService} className="space-y-3">
-              <div>
-                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
-                  Data do serviço
-                </label>
-                <input
-                  type="date"
-                  value={serviceForm.date}
-                  onChange={(e) =>
-                    setServiceForm({ ...serviceForm, date: e.target.value })
-                  }
-                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px] focus:outline-none focus:border-[#14181F]"
-                  required
-                />
+          {/* Left card: New Service Form (ONLY FOR ADMIN) */}
+          {isAdmin && (
+            <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)] h-fit">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8F98]">
+                NOVO REGISTRO (MODO ADMIN)
               </div>
-              <div>
-                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
-                  Equipe responsável
-                </label>
-                <select
-                  value={serviceForm.team_id}
-                  onChange={(e) => {
-                    const tid = e.target.value;
-                    const t = activeTeams.find((x) => x.id === tid);
-                    setServiceForm({
-                      ...serviceForm,
-                      team_id: tid,
-                      employeesText: t ? t.name : serviceForm.employeesText,
-                    });
-                  }}
-                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px] focus:outline-none focus:border-[#14181F]"
-                >
-                  <option value="">Selecione a equipe...</option>
-                  {activeTeams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.kind === "campo" ? "Campo" : "Atendimento"})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
-                  Funcionários que executaram (separados por /)
-                </label>
-                <input
-                  type="text"
-                  value={serviceForm.employeesText}
-                  onChange={(e) =>
-                    setServiceForm({
-                      ...serviceForm,
-                      employeesText: e.target.value,
-                    })
-                  }
-                  placeholder="Ex: Lucas / Felipe"
-                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px] focus:outline-none focus:border-[#14181F]"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
+              <h2 className="font-heading text-[18px] font-bold text-[#14181F] mt-0.5 mb-3">
+                Lançar Serviço / Atendimento
+              </h2>
+              <form onSubmit={handleCreateService} className="space-y-3">
                 <div>
                   <label className="block text-[12px] font-medium text-[#42474F] mb-1">
-                    Tipo de Serviço
+                    Data do serviço
                   </label>
-                  <select
-                    value={serviceForm.category}
+                  <input
+                    type="date"
+                    value={serviceForm.date}
                     onChange={(e) =>
-                      setServiceForm({
-                        ...serviceForm,
-                        category: e.target.value,
-                      })
+                      setServiceForm({ ...serviceForm, date: e.target.value })
                     }
                     className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px] focus:outline-none focus:border-[#14181F]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                    Equipe responsável
+                  </label>
+                  <select
+                    value={serviceForm.team_id}
+                    onChange={(e) => {
+                      const tid = e.target.value;
+                      const t = activeTeams.find((x) => x.id === tid);
+                      setServiceForm({
+                        ...serviceForm,
+                        team_id: tid,
+                        employeesText: t ? t.name : serviceForm.employeesText,
+                      });
+                    }}
+                    className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px] focus:outline-none focus:border-[#14181F]"
                   >
-                    <option value="Ordem de Serviço / Campo">OS Campo</option>
-                    <option value="Instalação">Instalação</option>
-                    <option value="Manutenção / Reparo">
-                      Manutenção / Reparo
-                    </option>
-                    <option value="Plantão Domingo">Plantão Domingo</option>
-                    <option value="Plantão Feriado">Plantão Feriado</option>
-                    <option value="Atendimento Suporte">
-                      Atendimento Suporte
-                    </option>
+                    <option value="">Selecione a equipe...</option>
+                    {activeTeams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.kind === "campo" ? "Campo" : "Atendimento"})
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
                   <label className="block text-[12px] font-medium text-[#42474F] mb-1">
-                    Protocolo / Nº OS
+                    Funcionários que executaram (separados por /)
                   </label>
                   <input
                     type="text"
-                    value={serviceForm.protocol}
+                    value={serviceForm.employeesText}
                     onChange={(e) =>
                       setServiceForm({
                         ...serviceForm,
-                        protocol: e.target.value,
+                        employeesText: e.target.value,
                       })
                     }
-                    placeholder="Ex: OS-1042"
+                    placeholder="Ex: Lucas / Felipe"
                     className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px] focus:outline-none focus:border-[#14181F]"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
-                  Cliente / Local / Bairro
-                </label>
-                <input
-                  type="text"
-                  value={serviceForm.client}
-                  onChange={(e) =>
-                    setServiceForm({ ...serviceForm, client: e.target.value })
-                  }
-                  placeholder="Nome do cliente ou local atendido"
-                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px] focus:outline-none focus:border-[#14181F]"
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
-                  Observações do serviço executado
-                </label>
-                <textarea
-                  rows={2}
-                  value={serviceForm.notes}
-                  onChange={(e) =>
-                    setServiceForm({ ...serviceForm, notes: e.target.value })
-                  }
-                  placeholder="Detalhes do atendimento..."
-                  className="w-full p-3 rounded-xl border border-[#E5E4DF] text-[13px] focus:outline-none focus:border-[#14181F]"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full h-10 rounded-full bg-[#14181F] text-white text-[13px] font-semibold hover:bg-[#272D38] transition flex items-center justify-center gap-1.5"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Registrar Serviço</span>
-              </button>
-            </form>
-          </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                      Tipo de Serviço
+                    </label>
+                    <select
+                      value={serviceForm.category}
+                      onChange={(e) =>
+                        setServiceForm({
+                          ...serviceForm,
+                          category: e.target.value,
+                        })
+                      }
+                      className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px] focus:outline-none focus:border-[#14181F]"
+                    >
+                      <option value="Ordem de Serviço / Campo">OS Campo</option>
+                      <option value="Instalação">Instalação</option>
+                      <option value="Manutenção / Reparo">
+                        Manutenção / Reparo
+                      </option>
+                      <option value="Plantão Domingo">Plantão Domingo</option>
+                      <option value="Plantão Feriado">Plantão Feriado</option>
+                      <option value="Atendimento Suporte">
+                        Atendimento Suporte
+                      </option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                      Protocolo / Nº OS
+                    </label>
+                    <input
+                      type="text"
+                      value={serviceForm.protocol}
+                      onChange={(e) =>
+                        setServiceForm({
+                          ...serviceForm,
+                          protocol: e.target.value,
+                        })
+                      }
+                      placeholder="Ex: OS-1042"
+                      className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px] focus:outline-none focus:border-[#14181F]"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                    Cliente / Local / Bairro
+                  </label>
+                  <input
+                    type="text"
+                    value={serviceForm.client}
+                    onChange={(e) =>
+                      setServiceForm({ ...serviceForm, client: e.target.value })
+                    }
+                    placeholder="Nome do cliente ou local atendido"
+                    className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px] focus:outline-none focus:border-[#14181F]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                    Observações do serviço executado
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={serviceForm.notes}
+                    onChange={(e) =>
+                      setServiceForm({ ...serviceForm, notes: e.target.value })
+                    }
+                    placeholder="Detalhes do atendimento..."
+                    className="w-full p-3 rounded-xl border border-[#E5E4DF] text-[13px] focus:outline-none focus:border-[#14181F]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full h-10 rounded-full bg-[#14181F] text-white text-[13px] font-semibold hover:bg-[#272D38] transition flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Registrar Serviço</span>
+                </button>
+              </form>
+            </div>
+          )}
 
           {/* Right card: List of services in the month */}
-          <div className="lg:col-span-2 bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+          <div
+            className={`${
+              isAdmin ? "lg:col-span-2" : "lg:col-span-3"
+            } bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]`}
+          >
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#EBEBE6]">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8F98]">
-                  HISTÓRICO OPERACIONAL
+                  HISTÓRICO OPERACIONAL (CONSULTA)
                 </div>
                 <h2 className="font-heading text-[18px] font-bold text-[#14181F]">
                   Serviços Realizados em {formatMonthTitle(monthKey)} (
@@ -1200,8 +1207,7 @@ export default function PublicCalendarView({
 
             {monthServices.length === 0 ? (
               <div className="py-12 text-center text-[#8A8F98] text-[13px]">
-                Nenhum serviço lançado neste mês. Clique em qualquer dia do
-                calendário ou use o formulário ao lado para adicionar.
+                Nenhum serviço registrado neste mês.
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -1239,14 +1245,16 @@ export default function PublicCalendarView({
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 self-end sm:self-center">
-                      <button
-                        onClick={() => onDeleteService(srv.id)}
-                        className="px-3 py-1.5 rounded-full text-[11.5px] font-medium text-[#EF4444] hover:bg-[#EF4444]/10 transition"
-                      >
-                        Remover
-                      </button>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex items-center gap-2 self-end sm:self-center">
+                        <button
+                          onClick={() => onDeleteService(srv.id)}
+                          className="px-3 py-1.5 rounded-full text-[11.5px] font-medium text-[#EF4444] hover:bg-[#EF4444]/10 transition"
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1419,7 +1427,11 @@ export default function PublicCalendarView({
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8A8F98] mb-2">
                       SERVIÇOS REALIZADOS NESTE DIA ({daySrv.length})
                     </div>
-                    {daySrv.length > 0 && (
+                    {daySrv.length === 0 ? (
+                      <div className="text-[12.5px] text-[#8A8F98] py-2">
+                        Nenhum serviço registrado nesta data.
+                      </div>
+                    ) : (
                       <div className="space-y-2 mb-4">
                         {daySrv.map((s) => (
                           <div
@@ -1438,73 +1450,77 @@ export default function PublicCalendarView({
                                 {s.notes ? `· ${s.notes}` : ""}
                               </div>
                             </div>
-                            <button
-                              onClick={() => onDeleteService(s.id)}
-                              className="text-[11px] text-[#EF4444] font-medium hover:underline"
-                            >
-                              Excluir
-                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => onDeleteService(s.id)}
+                                className="text-[11px] text-[#EF4444] font-medium hover:underline"
+                              >
+                                Excluir
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
                     )}
 
-                    {/* Quick Add Service for this date */}
-                    <form
-                      onSubmit={handleCreateService}
-                      className="p-3.5 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6] space-y-2.5"
-                    >
-                      <div className="text-[12px] font-semibold text-[#14181F]">
-                        + Adicionar serviço realizado em{" "}
-                        {formatShortDate(modalDate)}
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          value={serviceForm.client}
-                          onChange={(e) =>
-                            setServiceForm({
-                              ...serviceForm,
-                              client: e.target.value,
-                            })
-                          }
-                          placeholder="Cliente / Local / Serviço"
-                          className="h-9 px-3 rounded-xl border border-[#E5E4DF] bg-white text-[12.5px]"
-                        />
-                        <input
-                          type="text"
-                          value={serviceForm.employeesText}
-                          onChange={(e) =>
-                            setServiceForm({
-                              ...serviceForm,
-                              employeesText: e.target.value,
-                            })
-                          }
-                          placeholder="Funcionários (ex: Lucas / Felipe)"
-                          className="h-9 px-3 rounded-xl border border-[#E5E4DF] bg-white text-[12.5px]"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={serviceForm.notes}
-                          onChange={(e) =>
-                            setServiceForm({
-                              ...serviceForm,
-                              notes: e.target.value,
-                            })
-                          }
-                          placeholder="Observação ou protocolo da OS..."
-                          className="flex-1 h-9 px-3 rounded-xl border border-[#E5E4DF] bg-white text-[12.5px]"
-                        />
-                        <button
-                          type="submit"
-                          className="px-4 h-9 rounded-full bg-[#14181F] text-white text-[12px] font-semibold hover:bg-[#272D38]"
-                        >
-                          Salvar OS
-                        </button>
-                      </div>
-                    </form>
+                    {/* Quick Add Service for this date (ONLY FOR ADMIN) */}
+                    {isAdmin && (
+                      <form
+                        onSubmit={handleCreateService}
+                        className="p-3.5 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6] space-y-2.5"
+                      >
+                        <div className="text-[12px] font-semibold text-[#14181F]">
+                          + Adicionar serviço realizado em{" "}
+                          {formatShortDate(modalDate)}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={serviceForm.client}
+                            onChange={(e) =>
+                              setServiceForm({
+                                ...serviceForm,
+                                client: e.target.value,
+                              })
+                            }
+                            placeholder="Cliente / Local / Serviço"
+                            className="h-9 px-3 rounded-xl border border-[#E5E4DF] bg-white text-[12.5px]"
+                          />
+                          <input
+                            type="text"
+                            value={serviceForm.employeesText}
+                            onChange={(e) =>
+                              setServiceForm({
+                                ...serviceForm,
+                                employeesText: e.target.value,
+                              })
+                            }
+                            placeholder="Funcionários (ex: Lucas / Felipe)"
+                            className="h-9 px-3 rounded-xl border border-[#E5E4DF] bg-white text-[12.5px]"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={serviceForm.notes}
+                            onChange={(e) =>
+                              setServiceForm({
+                                ...serviceForm,
+                                notes: e.target.value,
+                              })
+                            }
+                            placeholder="Observação ou protocolo da OS..."
+                            className="flex-1 h-9 px-3 rounded-xl border border-[#E5E4DF] bg-white text-[12.5px]"
+                          />
+                          <button
+                            type="submit"
+                            className="px-4 h-9 rounded-full bg-[#14181F] text-white text-[12px] font-semibold hover:bg-[#272D38]"
+                          >
+                            Salvar OS
+                          </button>
+                        </div>
+                      </form>
+                    )}
                   </div>
                 </>
               );
