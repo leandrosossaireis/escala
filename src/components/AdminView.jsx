@@ -53,7 +53,7 @@ const ADMIN_TABS = [
   { id: "ajustes", label: "Trocas e ajustes", icon: Sliders },
   { id: "cores", label: "Cores", icon: Palette },
   { id: "relatorios", label: "Relatórios", icon: BarChart3 },
-  { id: "seguranca", label: "Segurança e Publicação", icon: Shield },
+  { id: "seguranca", label: "Senha do Admin", icon: Shield },
 ];
 
 export default function AdminView({
@@ -937,11 +937,27 @@ export default function AdminView({
     }
 
     lines.push("");
-    lines.push("DIAS TRABALHADOS POR FUNCIONARIO");
+    lines.push("DIAS TRABALHADOS E OCORRENCIAS POR FUNCIONARIO");
     lines.push(
-      "Funcionario;Equipe;Setor;Dias Normais;Plantao Dom;Plantao Fer;Trocas;Ferias/Aus;Folgas;Servicos Executados;Total Dias Trabalhados"
+      "Funcionario;Equipe;Setor;Dias Normais;Plantao Dom;Plantao Fer;Dia Adicional / Cobertura;Ferias;Ausencias;Folgas;Total Dias Trabalhados;Valor Estimado (R$);Detalhamento (Ferias, Trocas, Coberturas e Anotacoes)"
     );
+    const rNorm = Number(appState.settings.rate_dia_normal ?? 0);
+    const rDom = Number(appState.settings.rate_plantao_domingo ?? 150);
+    const rFer = Number(appState.settings.rate_plantao_feriado ?? 180);
+    const rAdd = Number(appState.settings.rate_dia_adicional ?? 150);
+
     for (const emp of employeeReport) {
+      const totalFin =
+        emp.diasNormais * rNorm +
+        emp.plantoesDomingo * rDom +
+        emp.plantoesFeriado * rFer +
+        emp.diasAdicionais * rAdd;
+      const detailsText = (emp.occurrences || [])
+        .map(
+          (o) =>
+            `${formatShortDate(o.date)} [${o.badge}]: ${o.description || ""}`
+        )
+        .join(" | ");
       lines.push(
         [
           emp.name,
@@ -950,11 +966,13 @@ export default function AdminView({
           emp.diasNormais,
           emp.plantoesDomingo,
           emp.plantoesFeriado,
-          emp.trocasTrabalhadas,
-          emp.feriasAusencias,
+          emp.diasAdicionais,
+          emp.feriasCount,
+          emp.ausenciasCount,
           emp.folgas,
-          emp.servicosCount,
           emp.totalTrabalhado,
+          totalFin.toFixed(2).replace(".", ","),
+          `"${detailsText.replace(/"/g, '""')}"`,
         ].join(";")
       );
     }
@@ -1029,19 +1047,6 @@ export default function AdminView({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 no-print">
-          <button
-            type="button"
-            disabled={publishing}
-            onClick={handlePublishToGitHub}
-            className="h-9 px-4 rounded-full bg-[#10B981] text-white text-[12.5px] font-semibold hover:bg-[#059669] transition inline-flex items-center gap-1.5 shadow-sm disabled:opacity-50"
-          >
-            <CloudUpload className="w-3.5 h-3.5" />
-            <span>
-              {publishing
-                ? "Publicando..."
-                : "Publicar Online para Todos"}
-            </span>
-          </button>
           <button
             type="button"
             onClick={handleExportBackupJson}
@@ -2786,18 +2791,18 @@ export default function AdminView({
             </div>
           </div>
 
-          {/* Card 2: Relatório Individual por Funcionário + Cálculo Financeiro de Diárias */}
+          {/* Card 2: Relatório Individual por Funcionário + Cálculo Financeiro de Diárias e Detalhamento */}
           <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
               <div>
                 <h2 className="font-heading text-[17px] font-bold text-[#14181F]">
-                  Total Individual e Cálculo de Diárias —{" "}
-                  {formatMonthTitle(reportMonth)}
+                  Relatório Individual por Funcionário (com Férias, Trocas,
+                  Coberturas e Adicionais) — {formatMonthTitle(reportMonth)}
                 </h2>
                 <p className="text-[12.5px] text-[#6B7280]">
-                  Configure os valores unitários abaixo (visível apenas no
-                  Admin) para calcular automaticamente o total financeiro de
-                  cada colaborador.
+                  Inclui contagem de dias normais, plantões,{" "}
+                  <strong>dias adicionais trabalhados na folga</strong> (ex:
+                  Tilú cobrindo a pedido do Guto = R$ 150) e todas as anotações.
                 </p>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 no-print">
@@ -2839,43 +2844,68 @@ export default function AdminView({
                     className="w-full h-8 px-2.5 rounded-lg border border-[#E5E4DF] text-[12px] font-semibold"
                   />
                 </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase text-[#6D28D9]">
-                      Plantão Fer. (R$)
-                    </label>
-                    <input
-                      type="number"
-                      value={appState.settings.rate_plantao_feriado ?? 180}
-                      onChange={(e) =>
-                        setAppState((prev) => ({
-                          ...prev,
-                          settings: {
-                            ...prev.settings,
-                            rate_plantao_feriado: Number(e.target.value),
-                          },
-                        }))
-                      }
-                      className="w-full h-8 px-2.5 rounded-lg border border-[#E5E4DF] text-[12px] font-semibold"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase text-[#6D28D9]">
+                    Plantão Fer. (R$)
+                  </label>
+                  <input
+                    type="number"
+                    value={appState.settings.rate_plantao_feriado ?? 180}
+                    onChange={(e) =>
+                      setAppState((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          rate_plantao_feriado: Number(e.target.value),
+                        },
+                      }))
+                    }
+                    className="w-full h-8 px-2.5 rounded-lg border border-[#E5E4DF] text-[12px] font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase text-[#1D4ED8]">
+                    Dia Adicional / Folga (R$)
+                  </label>
+                  <input
+                    type="number"
+                    value={appState.settings.rate_dia_adicional ?? 150}
+                    onChange={(e) =>
+                      setAppState((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          rate_dia_adicional: Number(e.target.value),
+                        },
+                      }))
+                    }
+                    className="w-full h-8 px-2.5 rounded-lg border border-[#E5E4DF] text-[12px] font-semibold"
+                  />
+                </div>
               </div>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-[13px]">
                 <thead>
-                  <tr className="border-b border-[#EBEBE6] text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8F98]">
+                  <tr className="border-b border-[#EBEBE6] text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8A8F98]">
                     <th className="py-2.5 px-2.5">Funcionário</th>
-                    <th className="py-2.5 px-2.5">Dupla / Equipe</th>
-                    <th className="py-2.5 px-2.5 text-center">Dias Normais</th>
-                    <th className="py-2.5 px-2.5 text-center">Plantões Dom.</th>
-                    <th className="py-2.5 px-2.5 text-center">Plantões Fer.</th>
-                    <th className="py-2.5 px-2.5 text-center">Trocas</th>
-                    <th className="py-2.5 px-2.5 text-right">
-                      Dias Trabalhados
+                    <th className="py-2.5 px-2.5 text-center">Normais</th>
+                    <th className="py-2.5 px-2.5 text-center">Plantão Dom.</th>
+                    <th className="py-2.5 px-2.5 text-center">Plantão Fer.</th>
+                    <th className="py-2.5 px-2.5 text-center">
+                      Dia Adicional
+                    </th>
+                    <th className="py-2.5 px-2.5 text-center">Férias/Aus.</th>
+                    <th className="py-2.5 px-2.5 text-center">Folgas</th>
+                    <th className="py-2.5 px-2.5">
+                      Histórico e Descrições (Férias, Trocas, Adicionais e Obs.)
                     </th>
                     <th className="py-2.5 px-2.5 text-right">
-                      Valor Estimado (R$)
+                      Total Trabalhado
+                    </th>
+                    <th className="py-2.5 px-2.5 text-right">
+                      Adicional / Total (R$)
                     </th>
                   </tr>
                 </thead>
@@ -2890,35 +2920,113 @@ export default function AdminView({
                     const rFer = Number(
                       appState.settings.rate_plantao_feriado ?? 180
                     );
+                    const rAdd = Number(
+                      appState.settings.rate_dia_adicional ?? 150
+                    );
                     const totalFinanceiro =
                       emp.diasNormais * rNorm +
                       emp.plantoesDomingo * rDom +
-                      (emp.plantoesFeriado + emp.trocasTrabalhadas) * rFer;
+                      emp.plantoesFeriado * rFer +
+                      emp.diasAdicionais * rAdd;
 
                     return (
-                      <tr key={emp.name} className="hover:bg-[#FBFAF7]">
-                        <td className="py-2.5 px-2.5 font-semibold text-[#14181F]">
-                          {emp.name}
+                      <tr
+                        key={emp.name}
+                        className="hover:bg-[#FBFAF7] align-top"
+                      >
+                        <td className="py-3 px-2.5">
+                          <div className="font-semibold text-[#14181F]">
+                            {emp.name}
+                          </div>
+                          <div className="text-[11px] text-[#8A8F98]">
+                            {emp.teamName} (Grp {emp.group})
+                          </div>
                         </td>
-                        <td className="py-2.5 px-2.5 text-[#6B7280]">
-                          {emp.teamName}
-                        </td>
-                        <td className="py-2.5 px-2.5 text-center tabular-nums">
+                        <td className="py-3 px-2.5 text-center tabular-nums font-medium">
                           {emp.diasNormais}
                         </td>
-                        <td className="py-2.5 px-2.5 text-center tabular-nums">
-                          {emp.plantoesDomingo}
+                        <td className="py-3 px-2.5 text-center tabular-nums">
+                          {emp.plantoesDomingo > 0 ? (
+                            <span className="px-2 py-0.5 rounded-full bg-[#F97316]/15 text-[#C2410C] font-bold">
+                              {emp.plantoesDomingo}
+                            </span>
+                          ) : (
+                            <span className="text-[#A3A8B1]">0</span>
+                          )}
                         </td>
-                        <td className="py-2.5 px-2.5 text-center tabular-nums">
-                          {emp.plantoesFeriado}
+                        <td className="py-3 px-2.5 text-center tabular-nums">
+                          {emp.plantoesFeriado > 0 ? (
+                            <span className="px-2 py-0.5 rounded-full bg-[#8B5CF6]/15 text-[#6D28D9] font-bold">
+                              {emp.plantoesFeriado}
+                            </span>
+                          ) : (
+                            <span className="text-[#A3A8B1]">0</span>
+                          )}
                         </td>
-                        <td className="py-2.5 px-2.5 text-center tabular-nums">
-                          {emp.trocasTrabalhadas}
+                        <td className="py-3 px-2.5 text-center tabular-nums">
+                          {emp.diasAdicionais > 0 ? (
+                            <span className="px-2 py-0.5 rounded-full bg-[#3B82F6]/15 text-[#1D4ED8] font-bold">
+                              +{emp.diasAdicionais}
+                            </span>
+                          ) : (
+                            <span className="text-[#A3A8B1]">0</span>
+                          )}
                         </td>
-                        <td className="py-2.5 px-2.5 text-right tabular-nums font-bold text-[#065F46]">
+                        <td className="py-3 px-2.5 text-center tabular-nums">
+                          {emp.feriasAusencias > 0 ? (
+                            <span className="px-2 py-0.5 rounded-full bg-[#EAB308]/25 text-[#854D0E] font-bold">
+                              {emp.feriasAusencias}d
+                            </span>
+                          ) : (
+                            <span className="text-[#A3A8B1]">0</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-2.5 text-center tabular-nums text-[#6B7280]">
+                          {emp.folgas}
+                        </td>
+                        <td className="py-3 px-2.5 min-w-[270px] max-w-[420px]">
+                          {emp.occurrences && emp.occurrences.length > 0 ? (
+                            <div className="space-y-1.5">
+                              {emp.occurrences.map((occ, idx) => (
+                                <div
+                                  key={`${occ.date}-${idx}`}
+                                  className="text-[11.5px] leading-snug p-1.5 rounded-lg bg-[#FBFAF7] border border-[#EBEBE6] flex flex-wrap items-center gap-1.5"
+                                >
+                                  <span className="font-mono font-semibold text-[#14181F] tabular-nums">
+                                    {formatShortDate(occ.date).slice(0, 5)}
+                                  </span>
+                                  <span
+                                    className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                      occ.color === "domingo"
+                                        ? "bg-[#F97316]/15 text-[#C2410C]"
+                                        : occ.color === "feriado"
+                                        ? "bg-[#8B5CF6]/15 text-[#6D28D9]"
+                                        : occ.color === "adicional"
+                                        ? "bg-[#3B82F6]/15 text-[#1D4ED8]"
+                                        : occ.color === "ferias" ||
+                                          occ.color === "ausencia"
+                                        ? "bg-[#EAB308]/25 text-[#854D0E]"
+                                        : "bg-[#EBEBE6] text-[#42474F]"
+                                    }`}
+                                  >
+                                    {occ.badge}
+                                  </span>
+                                  <span className="text-[#42474F]">
+                                    {occ.description}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-[11.5px] text-[#A3A8B1]">
+                              Sem ocorrências extras no mês
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-2.5 text-right tabular-nums font-bold text-[#065F46] whitespace-nowrap">
                           {emp.totalTrabalhado} dias
                         </td>
-                        <td className="py-2.5 px-2.5 text-right tabular-nums font-bold text-[#14181F]">
+                        <td className="py-3 px-2.5 text-right tabular-nums font-bold text-[#14181F] whitespace-nowrap">
                           {totalFinanceiro.toLocaleString("pt-BR", {
                             style: "currency",
                             currency: "BRL",
@@ -2932,7 +3040,67 @@ export default function AdminView({
             </div>
           </div>
 
-          {/* Card 3: Plantões do mês */}
+          {/* Card 3: Histórico Detalhado de Férias, Trocas, Coberturas e Anotações do Mês */}
+          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+            <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-1">
+              Histórico Detalhado de Férias, Trocas, Coberturas e Observações do
+              Mês
+            </h2>
+            <p className="text-[12.5px] text-[#6B7280] mb-3">
+              Todas as ocorrências, substituições e motivos registrados em{" "}
+              {formatMonthTitle(reportMonth)}.
+            </p>
+            <div className="divide-y divide-[#F2F1EC]">
+              {employeeReport
+                .flatMap((emp) =>
+                  (emp.occurrences || []).map((occ) => ({
+                    ...occ,
+                    empName: emp.name,
+                    teamName: emp.teamName,
+                  }))
+                )
+                .sort((a, b) => a.date.localeCompare(b.date))
+                .map((item, idx) => (
+                  <div
+                    key={`${item.date}-${item.empName}-${idx}`}
+                    className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[13px]"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono font-semibold text-[#14181F] tabular-nums">
+                        {formatShortDate(item.date)}
+                      </span>
+                      <span className="font-bold text-[#14181F]">
+                        {item.empName}
+                      </span>
+                      <span className="text-[11.5px] text-[#8A8F98]">
+                        ({item.teamName})
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                          item.color === "domingo"
+                            ? "bg-[#F97316]/15 text-[#C2410C]"
+                            : item.color === "feriado"
+                            ? "bg-[#8B5CF6]/15 text-[#6D28D9]"
+                            : item.color === "adicional"
+                            ? "bg-[#3B82F6]/15 text-[#1D4ED8]"
+                            : item.color === "ferias" ||
+                              item.color === "ausencia"
+                            ? "bg-[#EAB308]/25 text-[#854D0E]"
+                            : "bg-[#F3F2ED] text-[#42474F]"
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    </div>
+                    <div className="text-[12.5px] text-[#42474F]">
+                      {item.description}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {/* Card 4: Plantões do mês */}
           <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
             <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-3">
               Plantões do mês ({monthlyReport.duties.length})
@@ -2962,19 +3130,20 @@ export default function AdminView({
       )}
 
       {/* ===================================================================== */}
-      {/* TAB 8: SEGURANÇA E PUBLICAÇÃO ONLINE                                  */}
+      {/* TAB 8: SENHA DO ADMIN                                                 */}
       {/* ===================================================================== */}
       {activeTab === "seguranca" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Card 1: Senha do Administrador */}
+        <div className="max-w-lg">
           <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
             <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-1">
               Acesso Restrito do Administrador
             </h2>
             <p className="text-[13px] text-[#6B7280] mb-4">
-              Qualquer pessoa que abrir o link do site verá apenas o modo de
-              **Consulta Livre (Somente Leitura)**. Somente quem fizer login com
-              o usuário e senha abaixo pode editar a escala ou lançar serviços.
+              Qualquer pessoa que abrir o link do site verá apenas o modo de{" "}
+              <strong>Consulta Livre (Somente Leitura)</strong>. Todas as
+              alterações que você fizer logado como Admin são{" "}
+              <strong>sincronizadas automaticamente em tempo real</strong> para
+              todos.
             </p>
             <form onSubmit={handleSaveCredentials} className="space-y-3">
               <div>
@@ -3013,81 +3182,6 @@ export default function AdminView({
               >
                 Salvar Senha de Admin
               </button>
-            </form>
-          </div>
-
-          {/* Card 2: Publicação Direta no GitHub Pages */}
-          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
-            <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-1">
-              Sincronização Online com o GitHub Pages
-            </h2>
-            <p className="text-[13px] text-[#6B7280] mb-4">
-              Para que as alterações que você fizer no painel apareçam
-              automaticamente no celular/computador de todas as equipes ao
-              clicar em <strong>&quot;Publicar Online para Todos&quot;</strong>,
-              informe um Personal Access Token (PAT) do GitHub com permissão{" "}
-              <code>repo</code>.
-            </p>
-            <form onSubmit={handleSaveGhConfig} className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[12px] font-medium text-[#42474F] mb-1">
-                    Usuário GitHub
-                  </label>
-                  <input
-                    type="text"
-                    value={ghConfig.owner}
-                    onChange={(e) =>
-                      setGhConfig({ ...ghConfig, owner: e.target.value })
-                    }
-                    className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[12px] font-medium text-[#42474F] mb-1">
-                    Repositório
-                  </label>
-                  <input
-                    type="text"
-                    value={ghConfig.repo}
-                    onChange={(e) =>
-                      setGhConfig({ ...ghConfig, repo: e.target.value })
-                    }
-                    className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
-                  Token do GitHub (Personal Access Token - salvo apenas no seu
-                  navegador)
-                </label>
-                <input
-                  type="password"
-                  value={ghConfig.token}
-                  onChange={(e) =>
-                    setGhConfig({ ...ghConfig, token: e.target.value })
-                  }
-                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="submit"
-                  className="px-5 h-10 rounded-full bg-[#14181F] text-white text-[13px] font-semibold hover:bg-[#272D38] transition"
-                >
-                  Salvar Token
-                </button>
-                <button
-                  type="button"
-                  disabled={publishing}
-                  onClick={handlePublishToGitHub}
-                  className="px-5 h-10 rounded-full bg-[#10B981] text-white text-[13px] font-semibold hover:bg-[#059669] transition"
-                >
-                  {publishing ? "Publicando..." : "Publicar Agora"}
-                </button>
-              </div>
             </form>
           </div>
         </div>

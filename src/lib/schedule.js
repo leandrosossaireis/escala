@@ -67,6 +67,7 @@ export const DEFAULT_SETTINGS = {
   rate_dia_normal: 0,
   rate_plantao_domingo: 150,
   rate_plantao_feriado: 180,
+  rate_dia_adicional: 150,
   rate_servico_bonus: 0,
 };
 
@@ -780,6 +781,8 @@ export function buildCalendar({
                 ? "plantao_domingo"
                 : isRealHoliday
                 ? "plantao_feriado"
+                : subPrevBase === "folga"
+                ? "alteracao"
                 : "trabalha";
             teamStatuses[targetTeam.id].member_statuses[ovr.member_in] =
               dutyActiveStatus;
@@ -812,6 +815,8 @@ export function buildCalendar({
                 ? "plantao_domingo"
                 : isRealHoliday
                 ? "plantao_feriado"
+                : subPrevBase === "folga"
+                ? "alteracao"
                 : "trabalha";
             teamStatuses[targetTeam.id].member_statuses[abs.substitute_member] =
               dutyActiveStatus;
@@ -960,11 +965,15 @@ export function buildEmployeeWorkdaySummary(calendarData, teams, services = []) 
         plantoesDomingo: 0,
         plantoesFeriado: 0,
         trocasTrabalhadas: 0,
+        diasAdicionais: 0,
         folgas: 0,
+        feriasCount: 0,
+        ausenciasCount: 0,
         feriasAusencias: 0,
         totalTrabalhado: 0,
         servicosCount: 0,
         datesWorked: [],
+        occurrences: [],
       };
     }
     return employeeMap[clean];
@@ -980,10 +989,11 @@ export function buildEmployeeWorkdaySummary(calendarData, teams, services = []) 
     }
   }
 
-  const sortedDays = Object.values(calendarData.days).sort((a, b) => a.date.localeCompare(b.date));
+  const sortedDays = Object.values(calendarData.days).sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
 
   for (const day of sortedDays) {
-    // 1. Check if any external substitute worked on this day (from member_in or substitute_member)
     const creditedOnDay = new Set();
 
     for (const team of activeTeams) {
@@ -997,42 +1007,133 @@ export function buildEmployeeWorkdaySummary(calendarData, teams, services = []) 
         const emp = employeeMap[normalized] || ensureEmployee(normalized, team);
         if (!emp) continue;
 
-        // Avoid double counting if an employee is listed as substitute in another team and also in their own team on the same day
         const dayKey = `${day.date}:${emp.name}`;
+        const isExtraOffDayWork =
+          mStatus === "alteracao" ||
+          (entry.base_status === "folga" && mStatus === "trabalha");
 
         if (
-          ["trabalha", "alteracao", "plantao_domingo", "plantao_feriado", "troca"].includes(
-            mStatus
-          )
+          [
+            "trabalha",
+            "alteracao",
+            "plantao_domingo",
+            "plantao_feriado",
+            "troca",
+          ].includes(mStatus)
         ) {
           if (creditedOnDay.has(dayKey)) continue;
           creditedOnDay.add(dayKey);
 
-          if (mStatus === "troca") {
-            emp.trocasTrabalhadas++;
-            emp.totalTrabalhado++;
-            emp.datesWorked.push({ date: day.date, type: "Troca / Cobertura" });
-          } else if (mStatus === "plantao_domingo") {
+          if (mStatus === "plantao_domingo") {
             emp.plantoesDomingo++;
             emp.totalTrabalhado++;
-            emp.datesWorked.push({ date: day.date, type: "Plantão de domingo" });
+            const isSwap = entry.status === "troca";
+            emp.datesWorked.push({
+              date: day.date,
+              type: isSwap
+                ? "Plantão de domingo (Troca)"
+                : "Plantão de domingo",
+              note: entry.note,
+            });
+            emp.occurrences.push({
+              date: day.date,
+              badge: isSwap ? "Troca (Domingo)" : "Plantão Dom.",
+              color: "domingo",
+              description:
+                entry.note ||
+                (isSwap
+                  ? `Trabalhou no plantão de domingo (${
+                      entry.custom_name || team.name
+                    })`
+                  : "Plantão de domingo da escala"),
+            });
           } else if (mStatus === "plantao_feriado") {
             emp.plantoesFeriado++;
             emp.totalTrabalhado++;
-            emp.datesWorked.push({ date: day.date, type: "Plantão de feriado" });
+            const isSwap = entry.status === "troca";
+            const holName = day.holiday?.name || "Feriado";
+            emp.datesWorked.push({
+              date: day.date,
+              type: isSwap
+                ? `Plantão feriado (${holName} · Troca)`
+                : `Plantão feriado (${holName})`,
+              note: entry.note,
+            });
+            emp.occurrences.push({
+              date: day.date,
+              badge: isSwap ? `Troca (${holName})` : `Plantão Fer.`,
+              color: "feriado",
+              description:
+                entry.note ||
+                `Plantão no feriado de ${holName}${
+                  entry.custom_name ? ` (${entry.custom_name})` : ""
+                }`,
+            });
+          } else if (isExtraOffDayWork || mStatus === "troca") {
+            emp.diasAdicionais++;
+            emp.trocasTrabalhadas++;
+            emp.totalTrabalhado++;
+            emp.datesWorked.push({
+              date: day.date,
+              type: "Dia Adicional / Cobertura (na Folga)",
+              note: entry.note,
+            });
+            emp.occurrences.push({
+              date: day.date,
+              badge: "Dia Adicional (+R$)",
+              color: "adicional",
+              description:
+                entry.note ||
+                "Trabalhou em dia que seria sua folga (cobertura / adicional)",
+            });
           } else {
             emp.diasNormais++;
             emp.totalTrabalhado++;
-            emp.datesWorked.push({ date: day.date, type: "Dia normal" });
+            emp.datesWorked.push({
+              date: day.date,
+              type: "Dia normal",
+              note: entry.note,
+            });
+            if (entry.note && entry.status !== "trabalha") {
+              emp.occurrences.push({
+                date: day.date,
+                badge: "Observação",
+                color: "normal",
+                description: entry.note,
+              });
+            }
           }
         } else if (mStatus === "ferias" || mStatus === "ausencia") {
-          // Only record vacation/absence when evaluating the employee's primary team
           if (emp.teamId === team.id) {
             emp.feriasAusencias++;
+            if (mStatus === "ferias") emp.feriasCount++;
+            else emp.ausenciasCount++;
+            emp.occurrences.push({
+              date: day.date,
+              badge: mStatus === "ferias" ? "Férias" : "Ausência",
+              color: mStatus,
+              description:
+                entry.note ||
+                (mStatus === "ferias"
+                  ? "Em período de férias"
+                  : "Ausência registrada"),
+            });
           }
         } else {
           if (emp.teamId === team.id && !creditedOnDay.has(dayKey)) {
             emp.folgas++;
+            if (entry.status === "troca") {
+              emp.occurrences.push({
+                date: day.date,
+                badge: "Folgou em Troca",
+                color: "folga",
+                description:
+                  entry.note ||
+                  `Coberto em troca de plantão (${
+                    entry.custom_name || team.name
+                  })`,
+              });
+            }
           }
         }
       }

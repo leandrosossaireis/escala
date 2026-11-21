@@ -164,13 +164,21 @@ export function setAdminLoggedIn(loggedIn) {
 }
 
 // ============================================================================
-// Optional GitHub Repository Cloud Sync (publishes changes to public/escala-data.json)
+// Automatic Cloud Sync (publishes changes to public/escala-data.json)
 // ============================================================================
 
 export function getGitHubSyncConfig() {
   try {
     const raw = localStorage.getItem(GITHUB_SYNC_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        owner: parsed.owner || "leandrosossaireis",
+        repo: parsed.repo || "escala",
+        branch: parsed.branch || "main",
+        token: parsed.token || "",
+      };
+    }
   } catch {
     // ignore
   }
@@ -187,9 +195,16 @@ export function saveGitHubSyncConfig(cfg) {
 }
 
 export async function publishStateToGitHub(appState, config) {
-  const { owner, repo, branch, token } = config;
-  if (!token) {
-    throw new Error("Configure o Token do GitHub na aba Segurança / Publicação para publicar online.");
+  const cfg = config || getGitHubSyncConfig();
+  const owner = cfg.owner || "leandrosossaireis";
+  const repo = cfg.repo || "escala";
+  const branch = cfg.branch || "main";
+  const activeToken = cfg.token;
+
+  if (!activeToken) {
+    throw new Error(
+      "Informe seu Token do GitHub (com permissão Contents: Read & Write) na aba Senha do Admin para sincronizar online."
+    );
   }
 
   const path = "public/escala-data.json";
@@ -197,9 +212,10 @@ export async function publishStateToGitHub(appState, config) {
 
   // 1. Get current file SHA if it exists
   let sha = undefined;
-  const getRes = await fetch(`${apiUrl}?ref=${branch}`, {
+  const getRes = await fetch(`${apiUrl}?ref=${branch}&t=${Date.now()}`, {
+    cache: "no-store",
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${activeToken}`,
       Accept: "application/vnd.github+json",
     },
   });
@@ -222,21 +238,25 @@ export async function publishStateToGitHub(appState, config) {
   const putRes = await fetch(apiUrl, {
     method: "PUT",
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${activeToken}`,
       Accept: "application/vnd.github+json",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      message: `chore: atualização da escala operacional (${new Date().toLocaleString("pt-BR")})`,
+      message: `chore: atualização automática da escala (${new Date().toLocaleString(
+        "pt-BR"
+      )})`,
       content: base64Content,
-      branch: branch || "main",
+      branch: branch,
       ...(sha ? { sha } : {}),
     }),
   });
 
   if (!putRes.ok) {
     const errBody = await putRes.json().catch(() => ({}));
-    throw new Error(errBody.message || `Erro HTTP ${putRes.status} ao publicar no GitHub.`);
+    throw new Error(
+      errBody.message || `Erro HTTP ${putRes.status} ao sincronizar.`
+    );
   }
 
   return await putRes.json();
