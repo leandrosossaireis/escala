@@ -185,9 +185,19 @@ export default function AdminView({
   });
 
   // ---------------------------------------------------------------------------
-  // Tab 7: Relatórios State
+  // Tab 7: Relatórios State (Smart Multi-Dimension Filters)
   // ---------------------------------------------------------------------------
+  const [reportPeriodMode, setReportPeriodMode] = useState("mes"); // "mes" | "ano" | "custom"
   const [reportMonth, setReportMonth] = useState("2026-11");
+  const [reportYear, setReportYear] = useState("2026");
+  const [reportCustomStart, setReportCustomStart] = useState("2026-11-01");
+  const [reportCustomEnd, setReportCustomEnd] = useState("2026-11-30");
+
+  const [reportSearch, setReportSearch] = useState("");
+  const [reportTeamFilter, setReportTeamFilter] = useState("all");
+  const [reportGroupFilter, setReportGroupFilter] = useState("all"); // "all" | "A" | "B" | "campo" | "atendimento"
+  const [reportEventFilter, setReportEventFilter] = useState("all"); // "all" | "com_ocorrencia" | "com_adicional" | "com_plantao" | "com_ferias"
+  const [reportSortBy, setReportSortBy] = useState("padrao"); // "padrao" | "mais_trabalhados" | "mais_plantoes" | "maior_valor" | "nome"
 
   // ---------------------------------------------------------------------------
   // Tab 8: Segurança e Publicação Online State
@@ -275,12 +285,51 @@ export default function AdminView({
     return days.filter((d) => getWeekday(d) === 0);
   }, [mateusFolgaMonth]);
 
-  // Compute report data for reportMonth
-  const reportCalendar = useMemo(() => {
+  // Compute report data for selected period (Month, Full Year, or Custom Date Range)
+  const reportPeriodInfo = useMemo(() => {
+    if (reportPeriodMode === "ano") {
+      return {
+        startIso: `${reportYear}-01-01`,
+        endIso: `${reportYear}-12-31`,
+        title: `Ano de ${reportYear} (Jan a Dez)`,
+        fileSlug: `anual-${reportYear}`,
+      };
+    }
+    if (reportPeriodMode === "custom") {
+      const s =
+        reportCustomStart <= reportCustomEnd
+          ? reportCustomStart
+          : reportCustomEnd;
+      const e =
+        reportCustomEnd >= reportCustomStart
+          ? reportCustomEnd
+          : reportCustomStart;
+      return {
+        startIso: s,
+        endIso: e,
+        title: `${formatShortDate(s)} a ${formatShortDate(e)}`,
+        fileSlug: `${s}_a_${e}`,
+      };
+    }
     const { firstDay, lastDay } = getMonthRange(reportMonth);
-    return buildCalendar({
+    return {
       startIso: firstDay,
       endIso: lastDay,
+      title: formatMonthTitle(reportMonth),
+      fileSlug: reportMonth,
+    };
+  }, [
+    reportPeriodMode,
+    reportMonth,
+    reportYear,
+    reportCustomStart,
+    reportCustomEnd,
+  ]);
+
+  const reportCalendar = useMemo(() => {
+    return buildCalendar({
+      startIso: reportPeriodInfo.startIso,
+      endIso: reportPeriodInfo.endIso,
       settings: appState.settings,
       teams: appState.teams,
       holidays: appState.holidays,
@@ -289,7 +338,7 @@ export default function AdminView({
       weekOverrides: appState.weekOverrides,
       dutyOverrides: appState.dutyOverrides,
     });
-  }, [reportMonth, appState]);
+  }, [reportPeriodInfo, appState]);
 
   const monthlyReport = useMemo(
     () => buildMonthlyReport(reportCalendar, appState.teams),
@@ -305,6 +354,151 @@ export default function AdminView({
       ),
     [reportCalendar, appState.teams, appState.services]
   );
+
+  // Filtered & Sorted Team rows
+  const filteredTeamRows = useMemo(() => {
+    const q = reportSearch.trim().toLowerCase();
+    return monthlyReport.rows.filter((r) => {
+      const t = r.team;
+      if (reportTeamFilter !== "all" && t.id !== reportTeamFilter) return false;
+      if (reportGroupFilter === "A" && t.group !== "A") return false;
+      if (reportGroupFilter === "B" && t.group !== "B") return false;
+      if (reportGroupFilter === "campo" && t.kind !== "campo") return false;
+      if (reportGroupFilter === "atendimento" && t.kind !== "atendimento")
+        return false;
+      if (reportEventFilter === "com_plantao" && r.plantao_domingo + r.plantao_feriado + r.troca === 0)
+        return false;
+      if (reportEventFilter === "com_ferias" && r.ferias + r.ausencia === 0)
+        return false;
+      if (q && !t.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [
+    monthlyReport.rows,
+    reportTeamFilter,
+    reportGroupFilter,
+    reportEventFilter,
+    reportSearch,
+  ]);
+
+  // Filtered & Sorted Employee rows
+  const filteredEmployeeReport = useMemo(() => {
+    const q = reportSearch.trim().toLowerCase();
+    const rNorm = Number(appState.settings.rate_dia_normal ?? 0);
+    const rDom = Number(appState.settings.rate_plantao_domingo ?? 150);
+    const rFer = Number(appState.settings.rate_plantao_feriado ?? 180);
+    const rAdd = Number(appState.settings.rate_dia_adicional ?? 150);
+
+    const list = employeeReport.filter((emp) => {
+      if (reportTeamFilter !== "all" && emp.teamId !== reportTeamFilter)
+        return false;
+      if (reportGroupFilter === "A" && emp.group !== "A") return false;
+      if (reportGroupFilter === "B" && emp.group !== "B") return false;
+      if (reportGroupFilter === "campo" && emp.kind !== "campo") return false;
+      if (reportGroupFilter === "atendimento" && emp.kind !== "atendimento")
+        return false;
+
+      if (
+        reportEventFilter === "com_ocorrencia" &&
+        (!emp.occurrences || emp.occurrences.length === 0)
+      )
+        return false;
+      if (reportEventFilter === "com_adicional" && emp.diasAdicionais === 0)
+        return false;
+      if (
+        reportEventFilter === "com_plantao" &&
+        emp.plantoesDomingo + emp.plantoesFeriado === 0
+      )
+        return false;
+      if (reportEventFilter === "com_ferias" && emp.feriasAusencias === 0)
+        return false;
+
+      if (q) {
+        const matchName = emp.name.toLowerCase().includes(q);
+        const matchTeam = emp.teamName.toLowerCase().includes(q);
+        const matchOcc = (emp.occurrences || []).some(
+          (o) =>
+            o.badge?.toLowerCase().includes(q) ||
+            o.description?.toLowerCase().includes(q)
+        );
+        if (!matchName && !matchTeam && !matchOcc) return false;
+      }
+      return true;
+    });
+
+    return [...list].sort((a, b) => {
+      if (reportSortBy === "mais_trabalhados") {
+        return b.totalTrabalhado - a.totalTrabalhado;
+      }
+      if (reportSortBy === "mais_plantoes") {
+        return (
+          b.plantoesDomingo +
+          b.plantoesFeriado +
+          b.diasAdicionais -
+          (a.plantoesDomingo + a.plantoesFeriado + a.diasAdicionais)
+        );
+      }
+      if (reportSortBy === "maior_valor") {
+        const valA =
+          a.diasNormais * rNorm +
+          a.plantoesDomingo * rDom +
+          a.plantoesFeriado * rFer +
+          a.diasAdicionais * rAdd;
+        const valB =
+          b.diasNormais * rNorm +
+          b.plantoesDomingo * rDom +
+          b.plantoesFeriado * rFer +
+          b.diasAdicionais * rAdd;
+        return valB - valA;
+      }
+      if (reportSortBy === "nome") {
+        return a.name.localeCompare(b.name);
+      }
+      if (a.kind !== b.kind) return a.kind === "campo" ? -1 : 1;
+      return b.totalTrabalhado - a.totalTrabalhado || a.name.localeCompare(b.name);
+    });
+  }, [
+    employeeReport,
+    reportTeamFilter,
+    reportGroupFilter,
+    reportEventFilter,
+    reportSearch,
+    reportSortBy,
+    appState.settings,
+  ]);
+
+  // Filtered Duties
+  const filteredDuties = useMemo(() => {
+    const q = reportSearch.trim().toLowerCase();
+    return monthlyReport.duties.filter((d) => {
+      if (reportTeamFilter !== "all" && d.team_id !== reportTeamFilter)
+        return false;
+      if (reportGroupFilter !== "all") {
+        const t = appState.teams.find((x) => x.id === d.team_id);
+        if (t) {
+          if (reportGroupFilter === "A" && t.group !== "A") return false;
+          if (reportGroupFilter === "B" && t.group !== "B") return false;
+          if (reportGroupFilter === "campo" && t.kind !== "campo") return false;
+          if (reportGroupFilter === "atendimento" && t.kind !== "atendimento")
+            return false;
+        }
+      }
+      if (
+        q &&
+        !(d.label || "").toLowerCase().includes(q) &&
+        !(d.kind || "").toLowerCase().includes(q)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [
+    monthlyReport.duties,
+    reportTeamFilter,
+    reportGroupFilter,
+    reportSearch,
+    appState.teams,
+  ]);
 
   // ===========================================================================
   // Handlers: Tab 1 (Escala)
@@ -920,13 +1114,11 @@ export default function AdminView({
   // ===========================================================================
   function handleExportCsv() {
     const lines = [];
-    lines.push(
-      "RESUMO POR EQUIPE;" + formatMonthTitle(reportMonth)
-    );
+    lines.push("RESUMO POR EQUIPE;" + reportPeriodInfo.title);
     lines.push(
       "Equipe;Tipo;Grupo;Trabalha;Folga;Plantao Domingo;Plantao Feriado;Troca;Feriado;Ferias;Ausencia;Total Trabalhado"
     );
-    for (const r of monthlyReport.rows) {
+    for (const r of filteredTeamRows) {
       lines.push(
         [
           r.team.name,
@@ -955,7 +1147,7 @@ export default function AdminView({
     const rFer = Number(appState.settings.rate_plantao_feriado ?? 180);
     const rAdd = Number(appState.settings.rate_dia_adicional ?? 150);
 
-    for (const emp of employeeReport) {
+    for (const emp of filteredEmployeeReport) {
       const totalFin =
         emp.diasNormais * rNorm +
         emp.plantoesDomingo * rDom +
@@ -987,9 +1179,9 @@ export default function AdminView({
     }
 
     lines.push("");
-    lines.push("PLANTOES DO MES");
+    lines.push("PLANTOES DO PERIODO");
     lines.push("Data;Tipo;Equipe / Responsavel");
-    for (const d of monthlyReport.duties) {
+    for (const d of filteredDuties) {
       lines.push([formatShortDate(d.date), d.kind, d.label || ""].join(";"));
     }
 
@@ -998,10 +1190,10 @@ export default function AdminView({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `escala-${reportMonth}.csv`;
+    a.download = `escala-${reportPeriodInfo.fileSlug}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    notify?.(`Arquivo escala-${reportMonth}.csv exportado!`);
+    notify?.(`Arquivo escala-${reportPeriodInfo.fileSlug}.csv exportado!`);
   }
 
   function handleExportBackupJson() {
@@ -2697,29 +2889,99 @@ export default function AdminView({
       )}
 
       {/* ===================================================================== */}
-      {/* TAB 7: RELATÓRIOS                                                     */}
+      {/* TAB 7: RELATÓRIOS (WITH SMART FILTERS & KPI CARDS)                    */}
       {/* ===================================================================== */}
       {activeTab === "relatorios" && (
         <div className="space-y-4">
-          {/* Card 1: Resumo do mês por Equipe */}
-          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
+          {/* Smart Filter Control Bar */}
+          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)] no-print">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
               <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8F98]">
+                  FILTROS INTELIGENTES DE RELATÓRIO
+                </div>
                 <h2 className="font-heading text-[18px] font-bold text-[#14181F]">
-                  Resumo do mês — {formatMonthTitle(reportMonth)}
+                  Período: {reportPeriodInfo.title}
                 </h2>
-                <p className="text-[13px] text-[#6B7280]">
-                  Contabilização completa por equipe e por funcionário
-                  individual.
-                </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2 no-print">
-                <input
-                  type="month"
-                  value={reportMonth}
-                  onChange={(e) => setReportMonth(e.target.value)}
-                  className="h-9 px-3 rounded-full border border-[#E5E4DF] text-[13px] font-medium"
-                />
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Period Mode Switcher */}
+                <div className="inline-flex items-center p-1 rounded-full bg-[#F3F2ED] border border-[#E8E7E1]">
+                  <button
+                    type="button"
+                    onClick={() => setReportPeriodMode("mes")}
+                    className={`px-3 h-7 rounded-full text-[12px] font-semibold transition ${
+                      reportPeriodMode === "mes"
+                        ? "bg-white text-[#14181F] shadow-sm"
+                        : "text-[#6B7280]"
+                    }`}
+                  >
+                    Por Mês
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportPeriodMode("ano")}
+                    className={`px-3 h-7 rounded-full text-[12px] font-semibold transition ${
+                      reportPeriodMode === "ano"
+                        ? "bg-white text-[#14181F] shadow-sm"
+                        : "text-[#6B7280]"
+                    }`}
+                  >
+                    Ano Inteiro
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportPeriodMode("custom")}
+                    className={`px-3 h-7 rounded-full text-[12px] font-semibold transition ${
+                      reportPeriodMode === "custom"
+                        ? "bg-white text-[#14181F] shadow-sm"
+                        : "text-[#6B7280]"
+                    }`}
+                  >
+                    Período Livre
+                  </button>
+                </div>
+
+                {reportPeriodMode === "mes" && (
+                  <input
+                    type="month"
+                    value={reportMonth}
+                    onChange={(e) => setReportMonth(e.target.value)}
+                    className="h-9 px-3 rounded-full border border-[#E5E4DF] text-[13px] font-medium"
+                  />
+                )}
+
+                {reportPeriodMode === "ano" && (
+                  <select
+                    value={reportYear}
+                    onChange={(e) => setReportYear(e.target.value)}
+                    className="h-9 px-3.5 rounded-full border border-[#E5E4DF] text-[13px] font-medium"
+                  >
+                    <option value="2026">Ano 2026</option>
+                    <option value="2027">Ano 2027</option>
+                    <option value="2028">Ano 2028</option>
+                  </select>
+                )}
+
+                {reportPeriodMode === "custom" && (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="date"
+                      value={reportCustomStart}
+                      onChange={(e) => setReportCustomStart(e.target.value)}
+                      className="h-9 px-2.5 rounded-full border border-[#E5E4DF] text-[12.5px]"
+                    />
+                    <span className="text-[12px] text-[#8A8F98]">até</span>
+                    <input
+                      type="date"
+                      value={reportCustomEnd}
+                      onChange={(e) => setReportCustomEnd(e.target.value)}
+                      className="h-9 px-2.5 rounded-full border border-[#E5E4DF] text-[12.5px]"
+                    />
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={handleExportCsv}
@@ -2737,6 +2999,139 @@ export default function AdminView({
                   <span>Imprimir</span>
                 </button>
               </div>
+            </div>
+
+            {/* Filter Inputs Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8A8F98] mb-1">
+                  Buscar Funcionário / Motivo
+                </label>
+                <input
+                  type="text"
+                  value={reportSearch}
+                  onChange={(e) => setReportSearch(e.target.value)}
+                  placeholder="Ex: Tilú, Guto, Férias, Troca..."
+                  className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] text-[12.5px]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8A8F98] mb-1">
+                  Equipe / Dupla
+                </label>
+                <select
+                  value={reportTeamFilter}
+                  onChange={(e) => setReportTeamFilter(e.target.value)}
+                  className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] text-[12.5px]"
+                >
+                  <option value="all">Todas as equipes</option>
+                  {activeTeams.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8A8F98] mb-1">
+                  Grupo / Setor
+                </label>
+                <select
+                  value={reportGroupFilter}
+                  onChange={(e) => setReportGroupFilter(e.target.value)}
+                  className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] text-[12.5px]"
+                >
+                  <option value="all">Todos (Campo + Atendimento)</option>
+                  <option value="A">Somente Grupo A</option>
+                  <option value="B">Somente Grupo B</option>
+                  <option value="campo">Somente Equipe de Campo</option>
+                  <option value="atendimento">Somente Atendimento</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8A8F98] mb-1">
+                  Filtro Rápido de Situação
+                </label>
+                <select
+                  value={reportEventFilter}
+                  onChange={(e) => setReportEventFilter(e.target.value)}
+                  className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] text-[12.5px]"
+                >
+                  <option value="all">Todos os funcionários</option>
+                  <option value="com_ocorrencia">
+                    Somente com Trocas / Férias / Obs.
+                  </option>
+                  <option value="com_adicional">
+                    Somente com Dia Adicional (+R$)
+                  </option>
+                  <option value="com_plantao">
+                    Somente quem fez Plantão (Dom/Fer)
+                  </option>
+                  <option value="com_ferias">
+                    Somente com Férias / Ausência
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8A8F98] mb-1">
+                  Ordenar Por
+                </label>
+                <select
+                  value={reportSortBy}
+                  onChange={(e) => setReportSortBy(e.target.value)}
+                  className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] text-[12.5px]"
+                >
+                  <option value="padrao">Setor e Dias Trabalhados</option>
+                  <option value="maior_valor">Maior Valor a Receber (R$)</option>
+                  <option value="mais_plantoes">
+                    Mais Plantões e Adicionais
+                  </option>
+                  <option value="mais_trabalhados">
+                    Mais Dias Trabalhados
+                  </option>
+                  <option value="nome">Ordem Alfabética (A-Z)</option>
+                </select>
+              </div>
+            </div>
+
+            {(reportSearch ||
+              reportTeamFilter !== "all" ||
+              reportGroupFilter !== "all" ||
+              reportEventFilter !== "all") && (
+              <div className="mt-3 pt-2.5 border-t border-[#F2F1EC] flex items-center justify-between text-[12px]">
+                <span className="text-[#6B7280]">
+                  Exibindo <strong>{filteredEmployeeReport.length}</strong>{" "}
+                  funcionário(s) e <strong>{filteredTeamRows.length}</strong>{" "}
+                  equipe(s) com os filtros ativos.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReportSearch("");
+                    setReportTeamFilter("all");
+                    setReportGroupFilter("all");
+                    setReportEventFilter("all");
+                    setReportSortBy("padrao");
+                  }}
+                  className="text-[#14181F] font-semibold underline"
+                >
+                  Limpar todos os filtros
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Card 1: Resumo do período por Equipe */}
+          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+            <div className="pb-3 mb-3 border-b border-[#EBEBE6]">
+              <h2 className="font-heading text-[18px] font-bold text-[#14181F]">
+                Resumo por Equipe — {reportPeriodInfo.title} (
+                {filteredTeamRows.length})
+              </h2>
             </div>
 
             <div className="overflow-x-auto">
@@ -2758,7 +3153,7 @@ export default function AdminView({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F2F1EC]">
-                  {monthlyReport.rows.map((r) => (
+                  {filteredTeamRows.map((r) => (
                     <tr key={r.team.id} className="hover:bg-[#FBFAF7]">
                       <td className="py-2.5 px-2.5 font-semibold text-[#14181F]">
                         {r.team.name}{" "}
@@ -2805,8 +3200,8 @@ export default function AdminView({
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
               <div>
                 <h2 className="font-heading text-[17px] font-bold text-[#14181F]">
-                  Relatório Individual por Funcionário (com Férias, Trocas,
-                  Coberturas e Adicionais) — {formatMonthTitle(reportMonth)}
+                  Relatório Individual por Funcionário —{" "}
+                  {reportPeriodInfo.title} ({filteredEmployeeReport.length})
                 </h2>
                 <p className="text-[12.5px] text-[#6B7280]">
                   Inclui contagem de dias normais, plantões,{" "}
@@ -2919,7 +3314,7 @@ export default function AdminView({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F2F1EC]">
-                  {employeeReport.map((emp) => {
+                  {filteredEmployeeReport.map((emp) => {
                     const rNorm = Number(
                       appState.settings.rate_dia_normal ?? 0
                     );
@@ -3049,18 +3444,18 @@ export default function AdminView({
             </div>
           </div>
 
-          {/* Card 3: Histórico Detalhado de Férias, Trocas, Coberturas e Anotações do Mês */}
+          {/* Card 3: Histórico Detalhado de Férias, Trocas, Coberturas e Anotações do Período */}
           <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
             <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-1">
-              Histórico Detalhado de Férias, Trocas, Coberturas e Observações do
-              Mês
+              Histórico Detalhado de Férias, Trocas, Coberturas e Observações —{" "}
+              {reportPeriodInfo.title}
             </h2>
             <p className="text-[12.5px] text-[#6B7280] mb-3">
-              Todas as ocorrências, substituições e motivos registrados em{" "}
-              {formatMonthTitle(reportMonth)}.
+              Todas as ocorrências, substituições e motivos registrados para os
+              funcionários filtrados.
             </p>
             <div className="divide-y divide-[#F2F1EC]">
-              {employeeReport
+              {filteredEmployeeReport
                 .flatMap((emp) =>
                   (emp.occurrences || []).map((occ) => ({
                     ...occ,
@@ -3109,13 +3504,13 @@ export default function AdminView({
             </div>
           </div>
 
-          {/* Card 4: Plantões do mês */}
+          {/* Card 4: Plantões do período */}
           <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
             <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-3">
-              Plantões do mês ({monthlyReport.duties.length})
+              Plantões do período ({filteredDuties.length})
             </h2>
             <div className="divide-y divide-[#F2F1EC]">
-              {monthlyReport.duties.map((d, i) => (
+              {filteredDuties.map((d, i) => (
                 <div
                   key={`${d.date}-${i}`}
                   className="py-2.5 flex items-center justify-between text-[13px]"
