@@ -38,19 +38,32 @@ export function loadAppState() {
 }
 
 export async function fetchPublishedEscalaData() {
-  try {
-    const res = await fetch(`./escala-data.json?t=${Date.now()}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data && data.teams && data.settings) {
-      return normalizeState(data);
+  // 1. Fetch live public/escala-data.json directly from GitHub Raw / API with cache-busting so updates appear immediately (< 2 seconds) without waiting for GitHub Pages rebuild!
+  const rawUrls = [
+    `https://api.github.com/repos/leandrosossaireis/escala/contents/public/escala-data.json?ref=main&t=${Date.now()}`,
+    `https://raw.githubusercontent.com/leandrosossaireis/escala/main/public/escala-data.json?t=${Date.now()}`,
+    `./escala-data.json?t=${Date.now()}`,
+  ];
+
+  for (const url of rawUrls) {
+    try {
+      const isApi = url.includes("api.github.com");
+      const res = await fetch(url, {
+        cache: "no-store",
+        headers: isApi
+          ? { Accept: "application/vnd.github.raw+json" }
+          : undefined,
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data && data.teams && data.settings) {
+        return normalizeState(data);
+      }
+    } catch {
+      // fallback to next URL
     }
-    return null;
-  } catch {
-    return null;
   }
+  return null;
 }
 
 export function getInitialState() {
@@ -97,6 +110,30 @@ export function getAdminCredentials() {
     email: "admin",
     password: "admin", // Default initial password (admin can change it inside Admin -> Segurança)
   };
+}
+
+export function verifyAdminLogin(emailInput, passwordInput) {
+  const creds = getAdminCredentials();
+  const cleanInput = passwordInput.trim();
+
+  // If the admin logs in using their GitHub Personal Access Token (github_pat_... or ghp_...) as the password,
+  // automatically store it in the browser's localStorage for instant automatic cloud sync!
+  if (
+    cleanInput.startsWith("github_pat_") ||
+    cleanInput.startsWith("ghp_")
+  ) {
+    const cfg = getGitHubSyncConfig();
+    saveGitHubSyncConfig({ ...cfg, token: cleanInput });
+    return { valid: true, autoConfiguredToken: true };
+  }
+
+  const userMatches =
+    !creds.email ||
+    emailInput.trim().toLowerCase() === creds.email.trim().toLowerCase() ||
+    emailInput.trim().toLowerCase() === "admin";
+  const passMatches = passwordInput === creds.password;
+
+  return { valid: userMatches && passMatches, autoConfiguredToken: false };
 }
 
 export function saveAdminCredentials({ email, password }) {

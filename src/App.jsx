@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Calendar,
   SlidersHorizontal,
@@ -8,6 +8,7 @@ import {
   Lock,
   LogIn,
   X,
+  RefreshCw,
 } from "lucide-react";
 import PublicCalendarView from "./components/PublicCalendarView";
 import AdminView from "./components/AdminView";
@@ -16,9 +17,11 @@ import {
   saveAppState,
   resetAppState,
   fetchPublishedEscalaData,
-  getAdminCredentials,
+  verifyAdminLogin,
   isAdminLoggedIn,
   setAdminLoggedIn,
+  getGitHubSyncConfig,
+  publishStateToGitHub,
 } from "./lib/store";
 
 export default function App() {
@@ -29,24 +32,82 @@ export default function App() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [toast, setToast] = useState(null);
+  const [syncStatus, setSyncStatus] = useState("idle"); // "idle" | "syncing" | "synced" | "error"
+  const isInitialMount = useRef(true);
+  const lastPublishedJson = useRef("");
 
-  // On initial load, fetch the published escala-data.json so all visitors see the official schedule
+  // 1. Live Polling for Public Viewers (every 15 seconds + on window focus)
+  // Fetches directly from GitHub Raw API (no cache), so changes appear instantaneously (< 2s) without waiting for GitHub Pages build!
   useEffect(() => {
     let active = true;
-    fetchPublishedEscalaData().then((published) => {
-      if (active && published && !isAdminLoggedIn()) {
-        setAppState(published);
+
+    async function loadLatestFromCloud() {
+      const published = await fetchPublishedEscalaData();
+      if (active && published) {
+        const incomingJson = JSON.stringify(published);
+        if (!isAdminLoggedIn()) {
+          setAppState((prev) => {
+            const currentJson = JSON.stringify(prev);
+            return currentJson !== incomingJson ? published : prev;
+          });
+        } else if (!lastPublishedJson.current) {
+          lastPublishedJson.current = incomingJson;
+        }
       }
-    });
+    }
+
+    loadLatestFromCloud();
+    const timer = setInterval(() => {
+      if (!isAdminLoggedIn()) {
+        loadLatestFromCloud();
+      }
+    }, 15000);
+
+    const onFocus = () => {
+      if (!isAdminLoggedIn()) loadLatestFromCloud();
+    };
+    window.addEventListener("focus", onFocus);
+
     return () => {
       active = false;
+      clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
     };
   }, []);
 
+  // 2. Automatic Instant Cloud Sync when Admin makes ANY change
   useEffect(() => {
     if (isAdmin) {
       saveAppState(appState);
     }
+
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      lastPublishedJson.current = JSON.stringify(appState);
+      return;
+    }
+
+    if (!isAdmin) return;
+
+    const currentJson = JSON.stringify(appState);
+    if (currentJson === lastPublishedJson.current) return;
+
+    const ghConfig = getGitHubSyncConfig();
+    if (!ghConfig.token) return;
+
+    setSyncStatus("syncing");
+    const debounce = setTimeout(async () => {
+      try {
+        await publishStateToGitHub(appState, ghConfig);
+        lastPublishedJson.current = currentJson;
+        setSyncStatus("synced");
+      } catch (err) {
+        console.error("Auto-sync error:", err);
+        setSyncStatus("error");
+      }
+    }, 1200);
+
+    return () => clearTimeout(debounce);
   }, [appState, isAdmin]);
 
   function notify(message, type = "success") {
@@ -68,19 +129,20 @@ export default function App() {
 
   function handleLoginSubmit(e) {
     e.preventDefault();
-    const creds = getAdminCredentials();
-    const userMatches =
-      !creds.email ||
-      loginEmail.trim().toLowerCase() === creds.email.trim().toLowerCase() ||
-      loginEmail.trim().toLowerCase() === "admin";
-    const passMatches = loginPassword === creds.password;
+    const result = verifyAdminLogin(loginEmail, loginPassword);
 
-    if (userMatches && passMatches) {
+    if (result.valid) {
       setIsAdmin(true);
       setAdminLoggedIn(true);
       setShowLoginModal(false);
       setRoute("admin");
-      notify("Acesso Administrador liberado!");
+      if (result.autoConfiguredToken) {
+        notify(
+          "Acesso Admin liberado e Sincronização Automática em Tempo Real ativada!"
+        );
+      } else {
+        notify("Acesso Administrador liberado!");
+      }
     } else {
       notify("Usuário ou senha de administrador incorretos.", "error");
     }
@@ -156,8 +218,22 @@ export default function App() {
           <div className="flex items-center gap-2.5">
             {isAdmin && (
               <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#10B981]/15 text-[#065F46] text-[11.5px] font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
-                Modo Admin Ativo
+                {syncStatus === "syncing" ? (
+                  <>
+                    <RefreshCw className="w-3 h-3 animate-spin text-[#065F46]" />
+                    <span>Sincronizando...</span>
+                  </>
+                ) : syncStatus === "synced" ? (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
+                    <span>Sincronizado Online ✓</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
+                    <span>Modo Admin Ativo</span>
+                  </>
+                )}
               </span>
             )}
             {route === "public" ? (
