@@ -343,11 +343,31 @@ export function getDominantDayStatus(dayInfo, visibleTeams) {
     .filter(Boolean);
 
   if (entries.some((e) => e.status === "troca")) return "troca";
-  if (dayInfo.weekday === 0 && (dayInfo.campo_team_id || dayInfo.atendimento_team_id)) {
+  if (
+    dayInfo.weekday === 0 &&
+    (dayInfo.campo_team_id || dayInfo.atendimento_team_id)
+  ) {
     return "plantao_domingo";
   }
-  if (dayInfo.holiday && dayInfo.holiday.type !== "facultativo" && dayInfo.campo_team_id) {
+  if (
+    dayInfo.holiday &&
+    dayInfo.holiday.type !== "facultativo" &&
+    dayInfo.campo_team_id
+  ) {
     return "plantao_feriado";
+  }
+
+  // When viewing multiple teams (e.g. "Todas as equipes") on a normal weekday (Monday–Saturday),
+  // if ANY visible team or individual team member is working ("trabalha" or "alteracao"),
+  // the calendar day cell is a Working Day ("trabalha" - green), never "folga" (red)!
+  const anyTeamOrMemberWorking = entries.some((e) => {
+    if (e.status === "trabalha" || e.status === "alteracao") return true;
+    const mStats = Object.values(e.member_statuses || {});
+    return mStats.some((ms) => ms === "trabalha" || ms === "alteracao");
+  });
+
+  if (anyTeamOrMemberWorking && visibleTeams.length > 1) {
+    return "trabalha";
   }
 
   const counts = {};

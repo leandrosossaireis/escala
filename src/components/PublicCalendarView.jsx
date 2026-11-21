@@ -195,15 +195,30 @@ export default function PublicCalendarView({
     if (!todayInfo) return [];
     return activeTeams
       .filter((t) => t.kind === "campo")
-      .filter((t) =>
-        [
-          "trabalha",
-          "plantao_domingo",
-          "plantao_feriado",
-          "troca",
-          "alteracao",
-        ].includes(todayInfo.teams?.[t.id]?.status)
-      );
+      .filter((t) => {
+        const entry = todayInfo.teams?.[t.id];
+        if (!entry) return false;
+        if (
+          [
+            "trabalha",
+            "plantao_domingo",
+            "plantao_feriado",
+            "troca",
+            "alteracao",
+          ].includes(entry.status)
+        ) {
+          return true;
+        }
+        return Object.values(entry.member_statuses || {}).some((ms) =>
+          [
+            "trabalha",
+            "plantao_domingo",
+            "plantao_feriado",
+            "troca",
+            "alteracao",
+          ].includes(ms)
+        );
+      });
   }, [todayInfo, activeTeams]);
 
   const gridDays = useMemo(
