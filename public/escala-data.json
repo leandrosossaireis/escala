@@ -183,6 +183,12 @@
       "type": "facultativo"
     },
     {
+      "id": "hol-2026-07-09",
+      "date": "2026-07-09",
+      "name": "Revolução Constitucionalista (SP)",
+      "type": "estadual"
+    },
+    {
       "id": "hol-2026-09-07",
       "date": "2026-09-07",
       "name": "Independência do Brasil",
@@ -213,16 +219,214 @@
       "type": "nacional"
     },
     {
+      "id": "hol-2026-12-13",
+      "date": "2026-12-13",
+      "name": "Dia de Santa Luzia (Pinhal-SP)",
+      "type": "municipal"
+    },
+    {
       "id": "hol-2026-12-25",
       "date": "2026-12-25",
       "name": "Natal",
       "type": "nacional"
     },
     {
+      "id": "hol-2026-12-27",
+      "date": "2026-12-27",
+      "name": "Aniversário de Espírito Santo do Pinhal",
+      "type": "municipal"
+    },
+    {
       "id": "hol-2027-01-01",
       "date": "2027-01-01",
-      "name": "Ano Novo",
+      "name": "Confraternização Universal",
       "type": "nacional"
+    },
+    {
+      "id": "hol-2027-02-08",
+      "date": "2027-02-08",
+      "name": "Carnaval (segunda)",
+      "type": "facultativo"
+    },
+    {
+      "id": "hol-2027-02-09",
+      "date": "2027-02-09",
+      "name": "Carnaval (terça)",
+      "type": "facultativo"
+    },
+    {
+      "id": "hol-2027-03-26",
+      "date": "2027-03-26",
+      "name": "Sexta-feira Santa",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2027-04-21",
+      "date": "2027-04-21",
+      "name": "Tiradentes",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2027-05-01",
+      "date": "2027-05-01",
+      "name": "Dia do Trabalho",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2027-05-27",
+      "date": "2027-05-27",
+      "name": "Corpus Christi",
+      "type": "facultativo"
+    },
+    {
+      "id": "hol-2027-07-09",
+      "date": "2027-07-09",
+      "name": "Revolução Constitucionalista (SP)",
+      "type": "estadual"
+    },
+    {
+      "id": "hol-2027-09-07",
+      "date": "2027-09-07",
+      "name": "Independência do Brasil",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2027-10-12",
+      "date": "2027-10-12",
+      "name": "Nossa Senhora Aparecida",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2027-11-02",
+      "date": "2027-11-02",
+      "name": "Finados",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2027-11-15",
+      "date": "2027-11-15",
+      "name": "Proclamação da República",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2027-11-20",
+      "date": "2027-11-20",
+      "name": "Dia da Consciência Negra",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2027-12-13",
+      "date": "2027-12-13",
+      "name": "Dia de Santa Luzia (Pinhal-SP)",
+      "type": "municipal"
+    },
+    {
+      "id": "hol-2027-12-25",
+      "date": "2027-12-25",
+      "name": "Natal",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2027-12-27",
+      "date": "2027-12-27",
+      "name": "Aniversário de Espírito Santo do Pinhal",
+      "type": "municipal"
+    },
+    {
+      "id": "hol-2028-01-01",
+      "date": "2028-01-01",
+      "name": "Confraternização Universal",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2028-02-28",
+      "date": "2028-02-28",
+      "name": "Carnaval (segunda)",
+      "type": "facultativo"
+    },
+    {
+      "id": "hol-2028-02-29",
+      "date": "2028-02-29",
+      "name": "Carnaval (terça)",
+      "type": "facultativo"
+    },
+    {
+      "id": "hol-2028-04-14",
+      "date": "2028-04-14",
+      "name": "Sexta-feira Santa",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2028-04-21",
+      "date": "2028-04-21",
+      "name": "Tiradentes",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2028-05-01",
+      "date": "2028-05-01",
+      "name": "Dia do Trabalho",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2028-06-15",
+      "date": "2028-06-15",
+      "name": "Corpus Christi",
+      "type": "facultativo"
+    },
+    {
+      "id": "hol-2028-07-09",
+      "date": "2028-07-09",
+      "name": "Revolução Constitucionalista (SP)",
+      "type": "estadual"
+    },
+    {
+      "id": "hol-2028-09-07",
+      "date": "2028-09-07",
+      "name": "Independência do Brasil",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2028-10-12",
+      "date": "2028-10-12",
+      "name": "Nossa Senhora Aparecida",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2028-11-02",
+      "date": "2028-11-02",
+      "name": "Finados",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2028-11-15",
+      "date": "2028-11-15",
+      "name": "Proclamação da República",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2028-11-20",
+      "date": "2028-11-20",
+      "name": "Dia da Consciência Negra",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2028-12-13",
+      "date": "2028-12-13",
+      "name": "Dia de Santa Luzia (Pinhal-SP)",
+      "type": "municipal"
+    },
+    {
+      "id": "hol-2028-12-25",
+      "date": "2028-12-25",
+      "name": "Natal",
+      "type": "nacional"
+    },
+    {
+      "id": "hol-2028-12-27",
+      "date": "2028-12-27",
+      "name": "Aniversário de Espírito Santo do Pinhal",
+      "type": "municipal"
     }
   ],
   "overrides": [

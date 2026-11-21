@@ -92,20 +92,9 @@ export const INITIAL_TEAMS = [
 ];
 
 export const INITIAL_HOLIDAYS = [
-  { id: "hol-2026-01-01", date: "2026-01-01", name: "Confraternização Universal", type: "nacional" },
-  { id: "hol-2026-02-16", date: "2026-02-16", name: "Carnaval (segunda)",         type: "facultativo" },
-  { id: "hol-2026-02-17", date: "2026-02-17", name: "Carnaval (terça)",           type: "facultativo" },
-  { id: "hol-2026-04-03", date: "2026-04-03", name: "Sexta-feira Santa",          type: "nacional" },
-  { id: "hol-2026-04-21", date: "2026-04-21", name: "Tiradentes",                 type: "nacional" },
-  { id: "hol-2026-05-01", date: "2026-05-01", name: "Dia do Trabalho",            type: "nacional" },
-  { id: "hol-2026-06-04", date: "2026-06-04", name: "Corpus Christi",             type: "facultativo" },
-  { id: "hol-2026-09-07", date: "2026-09-07", name: "Independência do Brasil",    type: "nacional" },
-  { id: "hol-2026-10-12", date: "2026-10-12", name: "Nossa Senhora Aparecida",    type: "nacional" },
-  { id: "hol-2026-11-02", date: "2026-11-02", name: "Finados",                    type: "nacional" },
-  { id: "hol-2026-11-15", date: "2026-11-15", name: "Proclamação da República",   type: "nacional" },
-  { id: "hol-2026-11-20", date: "2026-11-20", name: "Dia da Consciência Negra",   type: "nacional" },
-  { id: "hol-2026-12-25", date: "2026-12-25", name: "Natal",                      type: "nacional" },
-  { id: "hol-2027-01-01", date: "2027-01-01", name: "Ano Novo",                   type: "nacional" },
+  ...generateBrazilianHolidaysForYear(2026),
+  ...generateBrazilianHolidaysForYear(2027),
+  ...generateBrazilianHolidaysForYear(2028),
 ];
 
 export const INITIAL_OVERRIDES = [

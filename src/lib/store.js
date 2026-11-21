@@ -8,13 +8,15 @@ import {
   INITIAL_SERVICES,
 } from "./schedule";
 
-const STORAGE_KEY = "escala_facil_pro_v5_state";
+const STORAGE_KEY = "escala_facil_pro_v6_state";
+const LOCAL_UPDATED_AT_KEY = "escala_facil_pro_local_updated_at";
 const AUTH_SESSION_KEY = "escala_facil_pro_admin_session";
 const ADMIN_AUTH_KEY = "escala_facil_pro_admin_cred";
 const GITHUB_SYNC_KEY = "escala_facil_pro_github_sync";
 
 export function normalizeState(parsed) {
   return {
+    updated_at: parsed?.updated_at || 0,
     settings: { ...DEFAULT_SETTINGS, ...(parsed?.settings || {}) },
     teams: Array.isArray(parsed?.teams) ? parsed.teams : INITIAL_TEAMS,
     holidays: Array.isArray(parsed?.holidays) ? parsed.holidays : INITIAL_HOLIDAYS,
@@ -34,6 +36,29 @@ export function loadAppState() {
   } catch (e) {
     console.error("Failed to load state from localStorage:", e);
     return getInitialState();
+  }
+}
+
+export function getLocalUpdatedAt() {
+  try {
+    return Number(localStorage.getItem(LOCAL_UPDATED_AT_KEY) || "0");
+  } catch {
+    return 0;
+  }
+}
+
+export function saveAppState(state, markAsAdminEdit = false) {
+  try {
+    const now = markAsAdminEdit
+      ? Date.now()
+      : state.updated_at || getLocalUpdatedAt() || 0;
+    const withTs = { ...state, updated_at: now };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(withTs));
+    if (markAsAdminEdit) {
+      localStorage.setItem(LOCAL_UPDATED_AT_KEY, String(now));
+    }
+  } catch (e) {
+    console.error("Failed to save state to localStorage:", e);
   }
 }
 
@@ -68,6 +93,7 @@ export async function fetchPublishedEscalaData() {
 
 export function getInitialState() {
   return {
+    updated_at: 0,
     settings: { ...DEFAULT_SETTINGS },
     teams: [...INITIAL_TEAMS],
     holidays: [...INITIAL_HOLIDAYS],
@@ -79,22 +105,11 @@ export function getInitialState() {
   };
 }
 
-export function saveAppState(state) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (e) {
-    console.error("Failed to save state to localStorage:", e);
-  }
-}
-
 export function resetAppState() {
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(LOCAL_UPDATED_AT_KEY);
   return getInitialState();
 }
-
-// ============================================================================
-// Admin Authentication (Only admin can enter /admin or mutate data)
-// ============================================================================
 
 export function getAdminCredentials() {
   try {
@@ -116,8 +131,6 @@ export function verifyAdminLogin(emailInput, passwordInput) {
   const creds = getAdminCredentials();
   const cleanInput = passwordInput.trim();
 
-  // If the admin logs in using their GitHub Personal Access Token (github_pat_... or ghp_...) as the password,
-  // automatically store it in the browser's localStorage for instant automatic cloud sync!
   if (
     cleanInput.startsWith("github_pat_") ||
     cleanInput.startsWith("ghp_")
@@ -145,7 +158,10 @@ export function saveAdminCredentials({ email, password }) {
 
 export function isAdminLoggedIn() {
   try {
-    return sessionStorage.getItem(AUTH_SESSION_KEY) === "true";
+    return (
+      localStorage.getItem(AUTH_SESSION_KEY) === "true" ||
+      sessionStorage.getItem(AUTH_SESSION_KEY) === "true"
+    );
   } catch {
     return false;
   }
@@ -154,8 +170,10 @@ export function isAdminLoggedIn() {
 export function setAdminLoggedIn(loggedIn) {
   try {
     if (loggedIn) {
+      localStorage.setItem(AUTH_SESSION_KEY, "true");
       sessionStorage.setItem(AUTH_SESSION_KEY, "true");
     } else {
+      localStorage.removeItem(AUTH_SESSION_KEY);
       sessionStorage.removeItem(AUTH_SESSION_KEY);
     }
   } catch {

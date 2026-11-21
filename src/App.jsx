@@ -15,6 +15,7 @@ import AdminView from "./components/AdminView";
 import {
   loadAppState,
   saveAppState,
+  getLocalUpdatedAt,
   resetAppState,
   fetchPublishedEscalaData,
   verifyAdminLogin,
@@ -44,6 +45,12 @@ export default function App() {
     async function loadLatestFromCloud() {
       const published = await fetchPublishedEscalaData();
       if (active && published) {
+        const localTs = getLocalUpdatedAt();
+        const remoteTs = Number(published.updated_at || 0);
+        // Never overwrite newer local Admin edits with an older remote JSON file!
+        if (localTs > 0 && remoteTs < localTs) {
+          return;
+        }
         const incomingJson = JSON.stringify(published);
         if (!isAdminLoggedIn()) {
           setAppState((prev) => {
@@ -77,14 +84,14 @@ export default function App() {
 
   // 2. Automatic Instant Cloud Sync when Admin makes ANY change
   useEffect(() => {
-    if (isAdmin) {
-      saveAppState(appState);
-    }
-
     if (isInitialMount.current) {
       isInitialMount.current = false;
       lastPublishedJson.current = JSON.stringify(appState);
       return;
+    }
+
+    if (isAdmin) {
+      saveAppState(appState, true);
     }
 
     if (!isAdmin) return;
@@ -98,7 +105,11 @@ export default function App() {
     setSyncStatus("syncing");
     const debounce = setTimeout(async () => {
       try {
-        await publishStateToGitHub(appState, ghConfig);
+        const stateWithTs = {
+          ...appState,
+          updated_at: getLocalUpdatedAt() || Date.now(),
+        };
+        await publishStateToGitHub(stateWithTs, ghConfig);
         lastPublishedJson.current = currentJson;
         setSyncStatus("synced");
       } catch (err) {
