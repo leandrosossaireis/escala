@@ -873,24 +873,6 @@ export default function PublicCalendarView({
                         {dayInfo.atendimento_duty_label}
                       </div>
                     )}
-
-                    {dayServices.length > 0 && (
-                      <div
-                        style={{
-                          backgroundColor:
-                            fgHex === "#FFFFFF"
-                              ? "rgba(20,24,31,0.35)"
-                              : "rgba(20,24,31,0.15)",
-                        }}
-                        className="hidden sm:flex px-2 py-0.5 rounded-full text-[9.5px] font-semibold truncate w-fit max-w-full items-center gap-1"
-                      >
-                        <Briefcase className="w-2.5 h-2.5 shrink-0" />
-                        <span>
-                          {dayServices.length}{" "}
-                          {dayServices.length === 1 ? "OS" : "OS"}
-                        </span>
-                      </div>
-                    )}
                   </div>
 
                   {/* Subtle bottom indicator on desktop */}
@@ -1907,105 +1889,6 @@ export default function PublicCalendarView({
                         );
                       })}
                     </div>
-                  </div>
-
-                  <div className="mt-5 pt-4 border-t border-[#EBEBE6]">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8A8F98] mb-2">
-                      SERVIÇOS REALIZADOS NESTE DIA ({daySrv.length})
-                    </div>
-                    {daySrv.length === 0 ? (
-                      <div className="text-[12.5px] text-[#8A8F98] py-2">
-                        Nenhum serviço registrado nesta data.
-                      </div>
-                    ) : (
-                      <div className="space-y-2 mb-4">
-                        {daySrv.map((s) => (
-                          <div
-                            key={s.id}
-                            className="p-3 rounded-xl bg-[#FBFAF7] border border-[#EBEBE6] flex items-center justify-between gap-2"
-                          >
-                            <div>
-                              <div className="text-[13px] font-semibold text-[#14181F]">
-                                {s.client}{" "}
-                                <span className="text-[11px] font-normal text-[#6B7280]">
-                                  ({s.category})
-                                </span>
-                              </div>
-                              <div className="text-[12px] text-[#42474F]">
-                                Equipe: {(s.employees || []).join(" / ")}{" "}
-                                {s.notes ? `· ${s.notes}` : ""}
-                              </div>
-                            </div>
-                            {isAdmin && (
-                              <button
-                                onClick={() => onDeleteService(s.id)}
-                                className="text-[11px] text-[#EF4444] font-medium hover:underline"
-                              >
-                                Excluir
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {isAdmin && (
-                      <form
-                        onSubmit={handleCreateService}
-                        className="p-3.5 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6] space-y-2.5"
-                      >
-                        <div className="text-[12px] font-semibold text-[#14181F]">
-                          + Adicionar serviço realizado em{" "}
-                          {formatShortDate(modalDate)}
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            value={serviceForm.client}
-                            onChange={(e) =>
-                              setServiceForm({
-                                ...serviceForm,
-                                client: e.target.value,
-                              })
-                            }
-                            placeholder="Cliente / Local / Serviço"
-                            className="h-9 px-3 rounded-xl border border-[#E5E4DF] bg-white text-[12.5px]"
-                          />
-                          <input
-                            type="text"
-                            value={serviceForm.employeesText}
-                            onChange={(e) =>
-                              setServiceForm({
-                                ...serviceForm,
-                                employeesText: e.target.value,
-                              })
-                            }
-                            placeholder="Funcionários (ex: Lucas / Felipe)"
-                            className="h-9 px-3 rounded-xl border border-[#E5E4DF] bg-white text-[12.5px]"
-                          />
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <input
-                            type="text"
-                            value={serviceForm.notes}
-                            onChange={(e) =>
-                              setServiceForm({
-                                ...serviceForm,
-                                notes: e.target.value,
-                              })
-                            }
-                            placeholder="Observação ou protocolo da OS..."
-                            className="flex-1 h-9 px-3 rounded-xl border border-[#E5E4DF] bg-white text-[12.5px]"
-                          />
-                          <button
-                            type="submit"
-                            className="px-4 h-9 rounded-full bg-[#14181F] text-white text-[12px] font-semibold hover:bg-[#272D38]"
-                          >
-                            Salvar OS
-                          </button>
-                        </div>
-                      </form>
-                    )}
                   </div>
                 </>
               );

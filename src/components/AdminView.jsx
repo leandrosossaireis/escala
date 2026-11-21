@@ -49,7 +49,6 @@ const ADMIN_TABS = [
   { id: "equipes", label: "Equipes", icon: Users },
   { id: "feriados", label: "Feriados", icon: Sparkles },
   { id: "ajustes", label: "Trocas e ajustes", icon: Sliders },
-  { id: "servicos", label: "Serviços e Diárias", icon: Briefcase },
   { id: "cores", label: "Cores", icon: Palette },
   { id: "relatorios", label: "Relatórios", icon: BarChart3 },
   { id: "seguranca", label: "Segurança e Publicação", icon: Shield },
@@ -2398,44 +2397,25 @@ export default function AdminView({
                     className="w-full h-8 px-2.5 rounded-lg border border-[#E5E4DF] text-[12px] font-semibold"
                   />
                 </div>
-                <div>
-                  <label className="block text-[10px] font-semibold uppercase text-[#6D28D9]">
-                    Plantão Fer. (R$)
-                  </label>
-                  <input
-                    type="number"
-                    value={appState.settings.rate_plantao_feriado ?? 180}
-                    onChange={(e) =>
-                      setAppState((prev) => ({
-                        ...prev,
-                        settings: {
-                          ...prev.settings,
-                          rate_plantao_feriado: Number(e.target.value),
-                        },
-                      }))
-                    }
-                    className="w-full h-8 px-2.5 rounded-lg border border-[#E5E4DF] text-[12px] font-semibold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold uppercase text-[#065F46]">
-                    Bônus/OS (R$)
-                  </label>
-                  <input
-                    type="number"
-                    value={appState.settings.rate_servico_bonus ?? 0}
-                    onChange={(e) =>
-                      setAppState((prev) => ({
-                        ...prev,
-                        settings: {
-                          ...prev.settings,
-                          rate_servico_bonus: Number(e.target.value),
-                        },
-                      }))
-                    }
-                    className="w-full h-8 px-2.5 rounded-lg border border-[#E5E4DF] text-[12px] font-semibold"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase text-[#6D28D9]">
+                      Plantão Fer. (R$)
+                    </label>
+                    <input
+                      type="number"
+                      value={appState.settings.rate_plantao_feriado ?? 180}
+                      onChange={(e) =>
+                        setAppState((prev) => ({
+                          ...prev,
+                          settings: {
+                            ...prev.settings,
+                            rate_plantao_feriado: Number(e.target.value),
+                          },
+                        }))
+                      }
+                      className="w-full h-8 px-2.5 rounded-lg border border-[#E5E4DF] text-[12px] font-semibold"
+                    />
+                  </div>
               </div>
             </div>
 
@@ -2449,7 +2429,6 @@ export default function AdminView({
                     <th className="py-2.5 px-2.5 text-center">Plantões Dom.</th>
                     <th className="py-2.5 px-2.5 text-center">Plantões Fer.</th>
                     <th className="py-2.5 px-2.5 text-center">Trocas</th>
-                    <th className="py-2.5 px-2.5 text-center">Serviços (OS)</th>
                     <th className="py-2.5 px-2.5 text-right">
                       Dias Trabalhados
                     </th>
@@ -2469,14 +2448,10 @@ export default function AdminView({
                     const rFer = Number(
                       appState.settings.rate_plantao_feriado ?? 180
                     );
-                    const rSrv = Number(
-                      appState.settings.rate_servico_bonus ?? 0
-                    );
                     const totalFinanceiro =
                       emp.diasNormais * rNorm +
                       emp.plantoesDomingo * rDom +
-                      (emp.plantoesFeriado + emp.trocasTrabalhadas) * rFer +
-                      emp.servicosCount * rSrv;
+                      (emp.plantoesFeriado + emp.trocasTrabalhadas) * rFer;
 
                     return (
                       <tr key={emp.name} className="hover:bg-[#FBFAF7]">
@@ -2497,9 +2472,6 @@ export default function AdminView({
                         </td>
                         <td className="py-2.5 px-2.5 text-center tabular-nums">
                           {emp.trocasTrabalhadas}
-                        </td>
-                        <td className="py-2.5 px-2.5 text-center tabular-nums font-semibold">
-                          {emp.servicosCount}
                         </td>
                         <td className="py-2.5 px-2.5 text-right tabular-nums font-bold text-[#065F46]">
                           {emp.totalTrabalhado} dias
