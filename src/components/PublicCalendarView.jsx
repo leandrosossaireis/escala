@@ -544,10 +544,10 @@ export default function PublicCalendarView({
           </div>
           <button
             type="button"
-            onClick={() => setViewMode("funcionarios")}
+            onClick={() => setViewMode(viewMode === "mes" ? "equipes" : "mes")}
             className="px-2.5 py-1 rounded-full bg-[#14181F] text-white text-[11px] font-semibold shrink-0 hover:bg-[#272D38]"
           >
-            Ver Diárias
+            {viewMode === "mes" ? "Ver Equipes" : "Ver Mês"}
           </button>
         </div>
       </div>
@@ -555,13 +555,13 @@ export default function PublicCalendarView({
       {/* Filters & View Mode Toolbar (100% Responsive) */}
       <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-3 sm:p-3.5 shadow-[0_1px_2px_rgba(20,24,31,0.04)] mb-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* View Switcher Tabs - Horizontally Scrollable on Mobile */}
+          {/* View Switcher Tabs - Only Mês and Equipes on Public View */}
           <div className="flex items-center justify-between gap-2 order-1 lg:order-2">
-            <div className="flex items-center gap-1 p-1 rounded-full bg-[#F3F2ED] border border-[#E8E7E1] overflow-x-auto max-w-full no-scrollbar">
+            <div className="flex items-center gap-1 p-1 rounded-full bg-[#F3F2ED] border border-[#E8E7E1]">
               <button
                 type="button"
                 onClick={() => setViewMode("mes")}
-                className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 h-8 rounded-full text-[12.5px] sm:text-[13px] font-medium transition whitespace-nowrap ${
+                className={`inline-flex items-center gap-1.5 px-3.5 h-8 rounded-full text-[12.5px] sm:text-[13px] font-medium transition whitespace-nowrap ${
                   viewMode === "mes"
                     ? "bg-white text-[#14181F] shadow-sm"
                     : "text-[#6B7280] hover:text-[#14181F]"
@@ -573,7 +573,7 @@ export default function PublicCalendarView({
               <button
                 type="button"
                 onClick={() => setViewMode("equipes")}
-                className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 h-8 rounded-full text-[12.5px] sm:text-[13px] font-medium transition whitespace-nowrap ${
+                className={`inline-flex items-center gap-1.5 px-3.5 h-8 rounded-full text-[12.5px] sm:text-[13px] font-medium transition whitespace-nowrap ${
                   viewMode === "equipes"
                     ? "bg-white text-[#14181F] shadow-sm"
                     : "text-[#6B7280] hover:text-[#14181F]"
@@ -581,42 +581,6 @@ export default function PublicCalendarView({
               >
                 <List className="w-3.5 h-3.5 shrink-0" />
                 <span>Equipes</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("funcionarios")}
-                className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 h-8 rounded-full text-[12.5px] sm:text-[13px] font-medium transition whitespace-nowrap ${
-                  viewMode === "funcionarios"
-                    ? "bg-white text-[#14181F] shadow-sm"
-                    : "text-[#6B7280] hover:text-[#14181F]"
-                }`}
-              >
-                <Users className="w-3.5 h-3.5 shrink-0" />
-                <span>Funcionários</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("ranking")}
-                className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 h-8 rounded-full text-[12.5px] sm:text-[13px] font-medium transition whitespace-nowrap ${
-                  viewMode === "ranking"
-                    ? "bg-white text-[#14181F] shadow-sm"
-                    : "text-[#6B7280] hover:text-[#14181F]"
-                }`}
-              >
-                <Trophy className="w-3.5 h-3.5 shrink-0" />
-                <span>Anual {selectedYear}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("servicos")}
-                className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 h-8 rounded-full text-[12.5px] sm:text-[13px] font-medium transition whitespace-nowrap ${
-                  viewMode === "servicos"
-                    ? "bg-white text-[#14181F] shadow-sm"
-                    : "text-[#6B7280] hover:text-[#14181F]"
-                }`}
-              >
-                <Briefcase className="w-3.5 h-3.5 shrink-0" />
-                <span>Serviços ({monthServices.length})</span>
               </button>
             </div>
 
