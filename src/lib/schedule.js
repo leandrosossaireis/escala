@@ -51,11 +51,11 @@ export const LIVE_COLORS = {
 };
 
 export const DEFAULT_SETTINGS = {
-  schedule_anchor: "2026-01-05",
-  anchor_group: "B", // In week of 2026-01-05, Group B works Mon-Fri and Group A works Tue-Sat (meaning week of 2026-11-02 Group A works Mon-Fri)
-  rotation_start: "2026-01-01",
+  schedule_anchor: "2026-11-02",
+  anchor_group: "A", // In week of 2026-11-02, Group A works Mon-Fri and Group B works Tue-Sat
+  rotation_start: "2026-11-01",
   mateus_name: "Mateus",
-  mateus_folga_dates: ["2026-12-20"],
+  mateus_folga_dates: ["2026-11-01", "2026-12-20"],
   color_trabalha: LIVE_COLORS.trabalha,
   color_folga: LIVE_COLORS.folga,
   color_plantao_domingo: LIVE_COLORS.plantao_domingo,
@@ -98,15 +98,12 @@ export const INITIAL_HOLIDAYS = [
   { id: "hol-2026-04-21", date: "2026-04-21", name: "Tiradentes",                 type: "nacional" },
   { id: "hol-2026-05-01", date: "2026-05-01", name: "Dia do Trabalho",            type: "nacional" },
   { id: "hol-2026-06-04", date: "2026-06-04", name: "Corpus Christi",             type: "facultativo" },
-  { id: "hol-2026-07-09", date: "2026-07-09", name: "Revolução Constitucionalista (SP)", type: "estadual" },
   { id: "hol-2026-09-07", date: "2026-09-07", name: "Independência do Brasil",    type: "nacional" },
   { id: "hol-2026-10-12", date: "2026-10-12", name: "Nossa Senhora Aparecida",    type: "nacional" },
   { id: "hol-2026-11-02", date: "2026-11-02", name: "Finados",                    type: "nacional" },
   { id: "hol-2026-11-15", date: "2026-11-15", name: "Proclamação da República",   type: "nacional" },
   { id: "hol-2026-11-20", date: "2026-11-20", name: "Dia da Consciência Negra",   type: "nacional" },
-  { id: "hol-2026-12-13", date: "2026-12-13", name: "Dia de Santa Luzia (Pinhal-SP)", type: "municipal" },
   { id: "hol-2026-12-25", date: "2026-12-25", name: "Natal",                      type: "nacional" },
-  { id: "hol-2026-12-27", date: "2026-12-27", name: "Aniversário de Espírito Santo do Pinhal", type: "municipal" },
   { id: "hol-2027-01-01", date: "2027-01-01", name: "Ano Novo",                   type: "nacional" },
 ];
 
@@ -176,96 +173,7 @@ export const INITIAL_ABSENCES = [
   },
 ];
 
-// Explicit Sunday/Holiday duty overrides so the default 2026 calendar matches the live app 100%
-export const INITIAL_DUTY_OVERRIDES = [
-  // Live 2026 Sunday duties from Base44 instance
-  { date: "2026-01-04", kind: "campo", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-01-04", kind: "atendimento", team_id: "6ae3ae28910b0403b224d7aa" },
-  { date: "2026-01-11", kind: "campo", team_id: "6ae3ae28910b0403b224d7a7" },
-  { date: "2026-01-18", kind: "campo", team_id: "6ae3ae28910b0403b224d7a5" },
-  { date: "2026-01-25", kind: "campo", team_id: "6ae3ae28910b0403b224d7a8" },
-
-  { date: "2026-02-01", kind: "campo", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-02-01", kind: "atendimento", team_id: "6ae3ae28910b0403b224d7aa" },
-  { date: "2026-02-08", kind: "campo", team_id: "6ae3ae28910b0403b224d7a7" },
-  { date: "2026-02-15", kind: "campo", team_id: "6ae3ae28910b0403b224d7a5" },
-  { date: "2026-02-22", kind: "campo", team_id: "6ae3ae28910b0403b224d7a8" },
-
-  { date: "2026-03-01", kind: "campo", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-03-01", kind: "atendimento", team_id: "6ae3ae28910b0403b224d7aa" },
-  { date: "2026-03-08", kind: "campo", team_id: "6ae3ae28910b0403b224d7a7" },
-  { date: "2026-03-15", kind: "campo", team_id: "6ae3ae28910b0403b224d7a5" },
-  { date: "2026-03-22", kind: "campo", team_id: "6ae3ae28910b0403b224d7a8" },
-  { date: "2026-03-29", kind: "campo", team_id: "6ae3ae28910b0403b224d7a6" },
-
-  { date: "2026-04-05", kind: "campo", team_id: "6ae3ae28910b0403b224d7a7" },
-  { date: "2026-04-05", kind: "atendimento", team_id: "6ae3ae28910b0403b224d7ac" },
-  { date: "2026-04-12", kind: "campo", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-04-19", kind: "campo", team_id: "6ae3ae28910b0403b224d7a8" },
-  { date: "2026-04-26", kind: "campo", team_id: "6ae3ae28910b0403b224d7a5" },
-
-  { date: "2026-05-03", kind: "campo", team_id: "6ae3ae28910b0403b224d7a7" },
-  { date: "2026-05-03", kind: "atendimento", team_id: "6ae3ae28910b0403b224d7ac" },
-  { date: "2026-05-10", kind: "campo", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-05-17", kind: "campo", team_id: "6ae3ae28910b0403b224d7a8" },
-  { date: "2026-05-24", kind: "campo", team_id: "6ae3ae28910b0403b224d7a5" },
-  { date: "2026-05-31", kind: "campo", team_id: "6ae3ae28910b0403b224d7a9" },
-
-  { date: "2026-06-07", kind: "campo", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-06-07", kind: "atendimento", team_id: "6ae3ae28910b0403b224d7aa" },
-  { date: "2026-06-14", kind: "campo", team_id: "6ae3ae28910b0403b224d7a7" },
-  { date: "2026-06-21", kind: "campo", team_id: "6ae3ae28910b0403b224d7a5" },
-  { date: "2026-06-28", kind: "campo", team_id: "6ae3ae28910b0403b224d7a8" },
-
-  { date: "2026-07-05", kind: "campo", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-07-05", kind: "atendimento", team_id: "6ae3ae28910b0403b224d7aa" },
-  { date: "2026-07-12", kind: "campo", team_id: "6ae3ae28910b0403b224d7a7" },
-  { date: "2026-07-19", kind: "campo", team_id: "6ae3ae28910b0403b224d7a5" },
-  { date: "2026-07-26", kind: "campo", team_id: "6ae3ae28910b0403b224d7a8" },
-
-  { date: "2026-08-02", kind: "campo", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-08-02", kind: "atendimento", team_id: "6ae3ae28910b0403b224d7aa" },
-  { date: "2026-08-09", kind: "campo", team_id: "6ae3ae28910b0403b224d7a7" },
-  { date: "2026-08-16", kind: "campo", team_id: "6ae3ae28910b0403b224d7a5" },
-  { date: "2026-08-23", kind: "campo", team_id: "6ae3ae28910b0403b224d7a8" },
-  { date: "2026-08-30", kind: "campo", team_id: "6ae3ae28910b0403b224d7a6" },
-
-  { date: "2026-09-06", kind: "campo", team_id: "6ae3ae28910b0403b224d7a7" },
-  { date: "2026-09-06", kind: "atendimento", team_id: "6ae3ae28910b0403b224d7ac" },
-  { date: "2026-09-13", kind: "campo", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-09-20", kind: "campo", team_id: "6ae3ae28910b0403b224d7a8" },
-  { date: "2026-09-27", kind: "campo", team_id: "6ae3ae28910b0403b224d7a5" },
-
-  { date: "2026-10-04", kind: "campo", team_id: "6ae3ae28910b0403b224d7a7" },
-  { date: "2026-10-04", kind: "atendimento", team_id: "6ae3ae28910b0403b224d7ac" },
-  { date: "2026-10-11", kind: "campo", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-10-18", kind: "campo", team_id: "6ae3ae28910b0403b224d7a8" },
-  { date: "2026-10-25", kind: "campo", team_id: "6ae3ae28910b0403b224d7a5" },
-
-  { date: "2026-11-01", kind: "campo", team_id: "6ae3ae28910b0403b224d7a7" },
-  { date: "2026-11-01", kind: "atendimento", team_id: "6ae3ae28910b0403b224d7aa" },
-  { date: "2026-11-08", kind: "campo", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-11-15", kind: "campo", team_id: "6ae3ae28910b0403b224d7a8" },
-  { date: "2026-11-22", kind: "campo", team_id: "6ae3ae28910b0403b224d7a5" },
-  { date: "2026-11-29", kind: "campo", team_id: "6ae3ae28910b0403b224d7a9" },
-
-  { date: "2026-12-06", kind: "campo", team_id: "6ae3ae28910b0403b224d7a6" },
-  { date: "2026-12-13", kind: "campo", team_id: "6ae3ae28910b0403b224d7a7" },
-  { date: "2026-12-20", kind: "campo", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-12-20", kind: "atendimento", team_id: "6ae3ae28910b0403b224d7ab" },
-  { date: "2026-12-27", kind: "campo", team_id: "6ae3ae28910b0403b224d7a8" },
-
-  // Live 2026 Holiday duties
-  { date: "2026-01-01", kind: "holiday", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-04-03", kind: "holiday", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-04-21", kind: "holiday", team_id: "6ae3ae28910b0403b224d7a5" },
-  { date: "2026-05-01", kind: "holiday", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-09-07", kind: "holiday", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-10-12", kind: "holiday", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-11-02", kind: "holiday", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-11-20", kind: "holiday", team_id: "6ae3ae28910b0403b224d7a4" },
-  { date: "2026-12-25", kind: "holiday", team_id: "6ae3ae28910b0403b224d7a6" },
-];
+export const INITIAL_DUTY_OVERRIDES = [];
 
 export const INITIAL_SERVICES = [
   {
@@ -524,7 +432,6 @@ export function buildCalendar({
   }
 
   let holidayRotationIdx = 0;
-  let atendimentoRotationIdx = 0;
 
   // Determine Mateus folga Sunday for each month
   const mateusFolgaByMonth = {};
@@ -532,23 +439,62 @@ export function buildCalendar({
     if (d) mateusFolgaByMonth[d.slice(0, 7)] = d;
   }
 
+  // Pre-compute Atendimento Sunday duty per month (starting from rotationStart month):
+  // Continuous rotation across all attendants in order (Alex -> João -> Leandro -> Victor) without repeating.
+  // If the 1st Sunday of the month falls on that person's only day off (meaning their group works Tue-Sat that week), their duty moves to the following Sunday!
+  const atendimentoAssignmentByMonth = {};
+  const sundaysByMonth = {};
+  const rotationStartMonth = rotationStart.slice(0, 7);
+  for (const iso of allSimDays) {
+    if (getWeekday(iso) === 0) {
+      const mk = iso.slice(0, 7);
+      if (mk < rotationStartMonth) continue;
+      if (!sundaysByMonth[mk]) sundaysByMonth[mk] = [];
+      sundaysByMonth[mk].push(iso);
+    }
+  }
+
+  let atendimentoMonthIdx = 0;
+  for (const [mk, monthSundays] of Object.entries(sundaysByMonth)) {
+    if (atendimentoTeams.length === 0 || monthSundays.length === 0) continue;
+    const attendant =
+      atendimentoTeams[atendimentoMonthIdx % atendimentoTeams.length];
+    atendimentoMonthIdx++;
+
+    const configuredSunday = mateusFolgaByMonth[mk];
+    let targetSun =
+      configuredSunday && monthSundays.includes(configuredSunday)
+        ? configuredSunday
+        : monthSundays[0];
+
+    if (!configuredSunday) {
+      const monFriGrp = getMonFriGroupForDate(targetSun);
+      if (attendant.group !== monFriGrp && monthSundays.length > 1) {
+        targetSun = monthSundays[1];
+      }
+    }
+
+    atendimentoAssignmentByMonth[targetSun] = attendant.id;
+  }
+
   const autoDutyByDate = {}; // date -> { campo_team_id, atendimento_team_id }
 
   for (const iso of allSimDays) {
     const weekday = getWeekday(iso);
     const holiday = holidayMap[iso] || null;
-    const monthKey = iso.slice(0, 7);
 
-    // 1. Sunday duty calculation
+    // 1. Sunday duty calculation:
+    // Balanced rotation across campo teams, preferring the group on Mon-Fri that week,
+    // tie-breaking by lowest sundayDutyCounts, then oldest lastSundayWorked, then team order!
     if (weekday === 0) {
       let chosenCampoId = dutyOverrideMap[`${iso}:campo`] || null;
-      if (!chosenCampoId && campoTeams.length > 0) {
+      if (!chosenCampoId && campoTeams.length > 0 && iso >= rotationStart) {
         const monFriGroup = getMonFriGroupForDate(iso);
-        // Prefer teams in monFriGroup (who had Saturday off), balanced by count and oldest lastSundayWorked
         const preferred = campoTeams.filter((t) => t.group === monFriGroup);
         const pool = preferred.length > 0 ? preferred : campoTeams;
         const sorted = [...pool].sort((a, b) => {
-          const countDiff = (sundayDutyCounts[a.id] || 0) - (sundayDutyCounts[b.id] || 0);
+          const countDiff =
+            (sundayDutyCounts[a.id] || 0) - (sundayDutyCounts[b.id] || 0);
           if (countDiff !== 0) return countDiff;
           if (lastSundayWorked[a.id] !== lastSundayWorked[b.id]) {
             return lastSundayWorked[a.id].localeCompare(lastSundayWorked[b.id]);
@@ -559,35 +505,16 @@ export function buildCalendar({
       }
 
       if (chosenCampoId) {
-        sundayDutyCounts[chosenCampoId] = (sundayDutyCounts[chosenCampoId] || 0) + 1;
+        sundayDutyCounts[chosenCampoId] =
+          (sundayDutyCounts[chosenCampoId] || 0) + 1;
         lastSundayWorked[chosenCampoId] = iso;
       }
 
-      // Atendimento Sunday duty (Mateus's Sunday off, 1st Sunday of month by default or custom date)
-      let chosenAtendimentoId = dutyOverrideMap[`${iso}:atendimento`] || null;
-      if (!chosenAtendimentoId && atendimentoTeams.length > 0) {
-        const configuredSunday = mateusFolgaByMonth[monthKey];
-        const dayNum = Number(iso.slice(8, 10));
-        const isTargetSunday = configuredSunday ? iso === configuredSunday : dayNum <= 7;
-        if (isTargetSunday) {
-          const monFriGroup = getMonFriGroupForDate(iso);
-          // Pick next in rotation preferring monFriGroup so nobody works Sunday on their only day off
-          let picked = null;
-          for (let offset = 0; offset < atendimentoTeams.length; offset++) {
-            const candidate = atendimentoTeams[(atendimentoRotationIdx + offset) % atendimentoTeams.length];
-            if (candidate.group === monFriGroup) {
-              picked = candidate;
-              atendimentoRotationIdx = (atendimentoRotationIdx + offset + 1) % atendimentoTeams.length;
-              break;
-            }
-          }
-          if (!picked) {
-            picked = atendimentoTeams[atendimentoRotationIdx % atendimentoTeams.length];
-            atendimentoRotationIdx = (atendimentoRotationIdx + 1) % atendimentoTeams.length;
-          }
-          chosenAtendimentoId = picked?.id || null;
-        }
-      }
+      // Atendimento Sunday duty
+      const chosenAtendimentoId =
+        dutyOverrideMap[`${iso}:atendimento`] ||
+        atendimentoAssignmentByMonth[iso] ||
+        null;
 
       autoDutyByDate[iso] = {
         campo_team_id: chosenCampoId,
@@ -595,11 +522,20 @@ export function buildCalendar({
       };
     }
 
-    // 2. Non-Sunday Holiday duty calculation
-    if (weekday !== 0 && holiday && holiday.type !== "facultativo") {
-      let chosenHolidayCampoId = dutyOverrideMap[`${iso}:holiday`] || dutyOverrideMap[`${iso}:campo`] || null;
+    // 2. Non-Sunday Holiday duty calculation (continuous rotation across all 6 campo duos in order 1..6)
+    if (
+      weekday !== 0 &&
+      holiday &&
+      holiday.type !== "facultativo" &&
+      iso >= rotationStart
+    ) {
+      let chosenHolidayCampoId =
+        dutyOverrideMap[`${iso}:holiday`] ||
+        dutyOverrideMap[`${iso}:campo`] ||
+        null;
       if (!chosenHolidayCampoId && campoTeams.length > 0) {
-        chosenHolidayCampoId = campoTeams[holidayRotationIdx % campoTeams.length].id;
+        chosenHolidayCampoId =
+          campoTeams[holidayRotationIdx % campoTeams.length].id;
       }
       holidayRotationIdx++;
       autoDutyByDate[iso] = {

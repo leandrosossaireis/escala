@@ -1,10 +1,11 @@
 {
   "settings": {
-    "schedule_anchor": "2026-01-05",
-    "anchor_group": "B",
-    "rotation_start": "2026-01-01",
+    "schedule_anchor": "2026-11-02",
+    "anchor_group": "A",
+    "rotation_start": "2026-11-01",
     "mateus_name": "Mateus",
     "mateus_folga_dates": [
+      "2026-11-01",
       "2026-12-20"
     ],
     "color_trabalha": "#10B981",
@@ -14,7 +15,11 @@
     "color_troca": "#3b82f6",
     "color_feriado": "#bababa",
     "color_alteracao": "#3B82F6",
-    "color_ferias": "#efff14"
+    "color_ferias": "#efff14",
+    "rate_dia_normal": 0,
+    "rate_plantao_domingo": 150,
+    "rate_plantao_feriado": 180,
+    "rate_servico_bonus": 0
   },
   "teams": [
     {
@@ -178,12 +183,6 @@
       "type": "facultativo"
     },
     {
-      "id": "hol-2026-07-09",
-      "date": "2026-07-09",
-      "name": "Revolução Constitucionalista (SP)",
-      "type": "estadual"
-    },
-    {
       "id": "hol-2026-09-07",
       "date": "2026-09-07",
       "name": "Independência do Brasil",
@@ -214,22 +213,10 @@
       "type": "nacional"
     },
     {
-      "id": "hol-2026-12-13",
-      "date": "2026-12-13",
-      "name": "Dia de Santa Luzia (Pinhal-SP)",
-      "type": "municipal"
-    },
-    {
       "id": "hol-2026-12-25",
       "date": "2026-12-25",
       "name": "Natal",
       "type": "nacional"
-    },
-    {
-      "id": "hol-2026-12-27",
-      "date": "2026-12-27",
-      "name": "Aniversário de Espírito Santo do Pinhal",
-      "type": "municipal"
     },
     {
       "id": "hol-2027-01-01",
@@ -245,7 +232,9 @@
       "team_id": "6ae3ae28910b0403b224d7a4",
       "status": "troca",
       "custom_name": "Lucas / Alison",
-      "note": "Troca de plantão Dia da Consciência Negra"
+      "member_out": "Felipe",
+      "member_in": "Alison",
+      "note": "Troca de plantão Dia da Consciência Negra (Alison cobriu Felipe)"
     },
     {
       "id": "ovr-nov-20-facao",
@@ -253,15 +242,19 @@
       "team_id": "6ae3ae28910b0403b224d7a5",
       "status": "troca",
       "custom_name": "Lucas / Alison",
-      "note": "Troca de plantão Dia da Consciência Negra"
+      "member_out": "Felipe",
+      "member_in": "Alison",
+      "note": "Troca de plantão Dia da Consciência Negra (Alison cobriu Felipe)"
     },
     {
       "id": "ovr-nov-22-lucas",
       "date": "2026-11-22",
       "team_id": "6ae3ae28910b0403b224d7a4",
       "status": "troca",
-      "custom_name": "Lucas / Alisson",
-      "note": "Troca de plantão de domingo"
+      "custom_name": "Lucas / Alison",
+      "member_out": "Facão",
+      "member_in": "Lucas",
+      "note": "Troca de plantão de domingo (Lucas cobriu Facão)"
     },
     {
       "id": "ovr-nov-22-facao",
@@ -269,7 +262,9 @@
       "team_id": "6ae3ae28910b0403b224d7a5",
       "status": "troca",
       "custom_name": "Lucas / Alison",
-      "note": "Troca de plantão de domingo"
+      "member_out": "Facão",
+      "member_in": "Lucas",
+      "note": "Troca de plantão de domingo (Lucas cobriu Facão)"
     }
   ],
   "absences": [
@@ -295,125 +290,6 @@
     }
   ],
   "weekOverrides": [],
-  "dutyOverrides": [
-    { "date": "2026-01-04", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-01-04", "kind": "atendimento", "team_id": "6ae3ae28910b0403b224d7aa" },
-    { "date": "2026-01-11", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a7" },
-    { "date": "2026-01-18", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a5" },
-    { "date": "2026-01-25", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a8" },
-    { "date": "2026-02-01", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-02-01", "kind": "atendimento", "team_id": "6ae3ae28910b0403b224d7aa" },
-    { "date": "2026-02-08", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a7" },
-    { "date": "2026-02-15", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a5" },
-    { "date": "2026-02-22", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a8" },
-    { "date": "2026-03-01", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-03-01", "kind": "atendimento", "team_id": "6ae3ae28910b0403b224d7aa" },
-    { "date": "2026-03-08", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a7" },
-    { "date": "2026-03-15", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a5" },
-    { "date": "2026-03-22", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a8" },
-    { "date": "2026-03-29", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a6" },
-    { "date": "2026-04-05", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a7" },
-    { "date": "2026-04-05", "kind": "atendimento", "team_id": "6ae3ae28910b0403b224d7ac" },
-    { "date": "2026-04-12", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-04-19", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a8" },
-    { "date": "2026-04-26", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a5" },
-    { "date": "2026-05-03", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a7" },
-    { "date": "2026-05-03", "kind": "atendimento", "team_id": "6ae3ae28910b0403b224d7ac" },
-    { "date": "2026-05-10", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-05-17", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a8" },
-    { "date": "2026-05-24", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a5" },
-    { "date": "2026-05-31", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a9" },
-    { "date": "2026-06-07", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-06-07", "kind": "atendimento", "team_id": "6ae3ae28910b0403b224d7aa" },
-    { "date": "2026-06-14", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a7" },
-    { "date": "2026-06-21", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a5" },
-    { "date": "2026-06-28", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a8" },
-    { "date": "2026-07-05", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-07-05", "kind": "atendimento", "team_id": "6ae3ae28910b0403b224d7aa" },
-    { "date": "2026-07-12", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a7" },
-    { "date": "2026-07-19", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a5" },
-    { "date": "2026-07-26", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a8" },
-    { "date": "2026-08-02", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-08-02", "kind": "atendimento", "team_id": "6ae3ae28910b0403b224d7aa" },
-    { "date": "2026-08-09", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a7" },
-    { "date": "2026-08-16", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a5" },
-    { "date": "2026-08-23", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a8" },
-    { "date": "2026-08-30", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a6" },
-    { "date": "2026-09-06", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a7" },
-    { "date": "2026-09-06", "kind": "atendimento", "team_id": "6ae3ae28910b0403b224d7ac" },
-    { "date": "2026-09-13", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-09-20", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a8" },
-    { "date": "2026-09-27", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a5" },
-    { "date": "2026-10-04", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a7" },
-    { "date": "2026-10-04", "kind": "atendimento", "team_id": "6ae3ae28910b0403b224d7ac" },
-    { "date": "2026-10-11", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-10-18", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a8" },
-    { "date": "2026-10-25", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a5" },
-    { "date": "2026-11-01", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a7" },
-    { "date": "2026-11-01", "kind": "atendimento", "team_id": "6ae3ae28910b0403b224d7aa" },
-    { "date": "2026-11-08", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-11-15", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a8" },
-    { "date": "2026-11-22", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a5" },
-    { "date": "2026-11-29", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a9" },
-    { "date": "2026-12-06", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a6" },
-    { "date": "2026-12-13", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a7" },
-    { "date": "2026-12-20", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-12-20", "kind": "atendimento", "team_id": "6ae3ae28910b0403b224d7ab" },
-    { "date": "2026-12-27", "kind": "campo", "team_id": "6ae3ae28910b0403b224d7a8" },
-    { "date": "2026-01-01", "kind": "holiday", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-04-03", "kind": "holiday", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-04-21", "kind": "holiday", "team_id": "6ae3ae28910b0403b224d7a5" },
-    { "date": "2026-05-01", "kind": "holiday", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-09-07", "kind": "holiday", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-10-12", "kind": "holiday", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-11-02", "kind": "holiday", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-11-20", "kind": "holiday", "team_id": "6ae3ae28910b0403b224d7a4" },
-    { "date": "2026-12-25", "kind": "holiday", "team_id": "6ae3ae28910b0403b224d7a6" }
-  ],
-  "services": [
-    {
-      "id": "srv-1",
-      "date": "2026-11-02",
-      "team_id": "6ae3ae28910b0403b224d7a4",
-      "employees": ["Lucas", "Felipe"],
-      "category": "Plantão Feriado",
-      "client": "Atendimento Emergencial / Rede",
-      "protocol": "OS-2026-1102",
-      "status": "concluido",
-      "notes": "Plantão de Finados concluído sem pendências"
-    },
-    {
-      "id": "srv-2",
-      "date": "2026-11-08",
-      "team_id": "6ae3ae28910b0403b224d7a4",
-      "employees": ["Lucas", "Felipe"],
-      "category": "Plantão Domingo",
-      "client": "Suporte Campo Regional",
-      "protocol": "OS-2026-1108",
-      "status": "concluido",
-      "notes": "3 chamados de reparo externo atendidos"
-    },
-    {
-      "id": "srv-3",
-      "date": "2026-11-15",
-      "team_id": "6ae3ae28910b0403b224d7a8",
-      "employees": ["Guto", "Sasa"],
-      "category": "Plantão Domingo",
-      "client": "Manutenção Preventiva & Chamados",
-      "protocol": "OS-2026-1115",
-      "status": "concluido",
-      "notes": "Plantão de domingo equipe Guto / Sasa"
-    },
-    {
-      "id": "srv-4",
-      "date": "2026-11-20",
-      "team_id": "6ae3ae28910b0403b224d7a4",
-      "employees": ["Lucas", "Alison"],
-      "category": "Troca de Plantão",
-      "client": "Plantão Consciência Negra",
-      "protocol": "OS-2026-1120",
-      "status": "concluido",
-      "notes": "Cobertura por troca de plantão (Lucas / Alison)"
-    }
-  ]
+  "dutyOverrides": [],
+  "services": []
 }
