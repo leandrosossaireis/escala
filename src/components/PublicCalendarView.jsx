@@ -1849,7 +1849,7 @@ export default function PublicCalendarView({
 
                   <div className="mt-4">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8A8F98] mb-2">
-                      SITUAÇÃO DE CADA EQUIPE NO DIA
+                      SITUAÇÃO DE CADA EQUIPE E INTEGRANTE NO DIA
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {activeTeams.map((t) => {
@@ -1858,33 +1858,65 @@ export default function PublicCalendarView({
                         const cKey = STATUS_META[st]?.colorKey || "folga";
                         const badgeBg = colors[cKey];
                         const badgeFg = getContrastColor(badgeBg);
+                        const memberEntries = Object.entries(
+                          entry?.member_statuses || {}
+                        );
+                        const hasDifferentMemberStatuses =
+                          memberEntries.length > 1 &&
+                          new Set(memberEntries.map(([, mst]) => mst)).size > 1;
 
                         return (
                           <div
                             key={t.id}
-                            className="p-2.5 rounded-xl border border-[#EBEBE6] flex items-center justify-between gap-2"
+                            className="p-2.5 rounded-xl border border-[#EBEBE6] flex flex-col justify-between gap-1.5"
                           >
-                            <div className="truncate">
-                              <div className="text-[13px] font-semibold text-[#14181F] truncate">
-                                {t.name}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="truncate">
+                                <div className="text-[13px] font-semibold text-[#14181F] truncate">
+                                  {t.name}
+                                </div>
+                                <div className="text-[11px] text-[#8A8F98]">
+                                  {t.kind === "campo" ? "Campo" : "Atendimento"}{" "}
+                                  · Grupo {t.group}
+                                  {entry?.custom_name
+                                    ? ` · ${entry.custom_name}`
+                                    : ""}
+                                </div>
                               </div>
-                              <div className="text-[11px] text-[#8A8F98]">
-                                {t.kind === "campo" ? "Campo" : "Atendimento"} ·
-                                Grupo {t.group}
-                                {entry?.custom_name
-                                  ? ` · ${entry.custom_name}`
-                                  : ""}
-                              </div>
+                              <span
+                                style={{
+                                  backgroundColor: badgeBg,
+                                  color: badgeFg,
+                                }}
+                                className="px-2.5 py-1 rounded-full text-[11px] font-semibold shrink-0"
+                              >
+                                {STATUS_META[st]?.label}
+                              </span>
                             </div>
-                            <span
-                              style={{
-                                backgroundColor: badgeBg,
-                                color: badgeFg,
-                              }}
-                              className="px-2.5 py-1 rounded-full text-[11px] font-semibold shrink-0"
-                            >
-                              {STATUS_META[st]?.label}
-                            </span>
+
+                            {/* Individual breakdown if 1 member of the duo swapped or is on vacation */}
+                            {hasDifferentMemberStatuses && (
+                              <div className="pt-1.5 border-t border-[#F2F1EC] flex flex-wrap items-center gap-1.5">
+                                {memberEntries.map(([mName, mSt]) => {
+                                  const mcKey =
+                                    STATUS_META[mSt]?.colorKey || "folga";
+                                  const mBg = colors[mcKey];
+                                  const mFg = getContrastColor(mBg);
+                                  return (
+                                    <span
+                                      key={mName}
+                                      style={{
+                                        backgroundColor: mBg,
+                                        color: mFg,
+                                      }}
+                                      className="px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                                    >
+                                      {mName}: {STATUS_META[mSt]?.short || mSt}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         );
                       })}

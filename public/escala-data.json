@@ -276,6 +276,8 @@
     {
       "id": "abs-nov-01-welliton",
       "team_id": "6ae3ae28910b0403b224d7a7",
+      "member": null,
+      "substitute_member": null,
       "kind": "ausencia",
       "start_date": "2026-11-01",
       "end_date": "2026-11-01",
@@ -284,10 +286,12 @@
     {
       "id": "abs-nov-17-21-welliton",
       "team_id": "6ae3ae28910b0403b224d7a7",
+      "member": "Welliton",
+      "substitute_member": null,
       "kind": "ferias",
       "start_date": "2026-11-17",
       "end_date": "2026-11-21",
-      "note": "Férias programadas"
+      "note": "Férias do Welliton (Igor permaneceu trabalhando normal)"
     }
   ],
   "weekOverrides": [],

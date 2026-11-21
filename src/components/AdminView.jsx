@@ -17,6 +17,8 @@ import {
   Shield,
   CloudUpload,
   LogOut,
+  Pencil,
+  X,
 } from "lucide-react";
 import {
   getAdminCredentials,
@@ -108,12 +110,16 @@ export default function AdminView({
   const [importYear, setImportYear] = useState(2026);
 
   // ---------------------------------------------------------------------------
-  // Tab 4: Trocas e Ajustes State
+  // Tab 4: Trocas e Ajustes State (Smart Individual & Team Swaps + Edit Support)
   // ---------------------------------------------------------------------------
   const [trocaPlantaoForm, setTrocaPlantaoForm] = useState({
+    id: null,
     date: "2026-11-22",
     team_id: appState.teams[0]?.id || "",
+    member_out: "", // "" = Dupla toda, or specific member name (e.g. "Felipe")
+    member_in: "",  // Optional substitute employee (e.g. "Alison")
     custom_name: "",
+    note: "",
   });
 
   const [swapDayTeamsForm, setSwapDayTeamsForm] = useState({
@@ -128,7 +134,10 @@ export default function AdminView({
   });
 
   const [pointOverrideForm, setPointOverrideForm] = useState({
+    id: null,
     team_id: appState.teams[0]?.id || "",
+    member: "", // "" = Dupla toda, or specific member name
+    member_in: "", // Optional substitute employee
     date: "2026-11-25",
     status: "trabalha",
     custom_name: "",
@@ -136,10 +145,13 @@ export default function AdminView({
   });
 
   const [absenceForm, setAbsenceForm] = useState({
-    team_id: appState.teams[0]?.id || "",
+    id: null,
+    team_id: appState.teams[3]?.id || appState.teams[0]?.id || "",
+    member: "", // "" = Dupla toda, or specific member name (e.g. "Welliton")
+    substitute_member: "", // Optional substitute during absence
     kind: "ferias",
-    start_date: "2026-12-01",
-    end_date: "2026-12-10",
+    start_date: "2026-11-17",
+    end_date: "2026-11-21",
     note: "",
   });
 
@@ -231,6 +243,30 @@ export default function AdminView({
         ),
     [appState.teams]
   );
+
+  // All individual employee names across all active teams
+  const allEmployeesList = useMemo(() => {
+    const list = [];
+    for (const t of activeTeams) {
+      const members = t.members?.length
+        ? t.members
+        : t.name.split("/").map((s) => s.trim()).filter(Boolean);
+      for (const m of members) {
+        if (!list.some((x) => x.name === m)) {
+          list.push({ name: m, teamId: t.id, teamName: t.name, kind: t.kind });
+        }
+      }
+    }
+    return list;
+  }, [activeTeams]);
+
+  function getTeamMembersList(teamId) {
+    const t = appState.teams.find((x) => x.id === teamId);
+    if (!t) return [];
+    return t.members?.length
+      ? t.members
+      : t.name.split("/").map((s) => s.trim()).filter(Boolean);
+  }
 
   // Compute Sundays of mateusFolgaMonth
   const sundaysInFolgaMonth = useMemo(() => {
@@ -466,33 +502,74 @@ export default function AdminView({
   }
 
   // ===========================================================================
-  // Handlers: Tab 4 (Trocas e Ajustes)
+  // Handlers: Tab 4 (Trocas e Ajustes - Smart Individual & Team Swaps + Edit)
   // ===========================================================================
+  function computeAutoSwapLabel(teamId, memberOut, memberIn, manualCustom) {
+    if (manualCustom && manualCustom.trim()) return manualCustom.trim();
+    const members = getTeamMembersList(teamId);
+    if (!memberOut) {
+      return memberIn ? memberIn : members.join(" / ");
+    }
+    const updated = members
+      .map((m) => (m === memberOut ? memberIn || `${m} (Folga)` : m))
+      .filter(Boolean);
+    return updated.join(" / ");
+  }
+
   function handleSaveTrocaPlantao(e) {
     e.preventDefault();
     const targetTeam = appState.teams.find(
       (t) => t.id === trocaPlantaoForm.team_id
     );
     if (!targetTeam) return;
+
+    const autoLabel = computeAutoSwapLabel(
+      trocaPlantaoForm.team_id,
+      trocaPlantaoForm.member_out,
+      trocaPlantaoForm.member_in,
+      trocaPlantaoForm.custom_name
+    );
+
+    const autoNote =
+      trocaPlantaoForm.note?.trim() ||
+      (trocaPlantaoForm.member_out
+        ? `Troca individual: ${trocaPlantaoForm.member_out} saiu${
+            trocaPlantaoForm.member_in
+              ? `, ${trocaPlantaoForm.member_in} cobriu`
+              : ""
+          }`
+        : "Troca de plantão");
+
     setAppState((prev) => {
-      const filtered = prev.overrides.filter(
-        (o) =>
-          !(
-            o.date === trocaPlantaoForm.date &&
-            o.team_id === trocaPlantaoForm.team_id
-          )
+      const filtered = prev.overrides.filter((o) =>
+        trocaPlantaoForm.id
+          ? o.id !== trocaPlantaoForm.id
+          : !(
+              o.date === trocaPlantaoForm.date &&
+              o.team_id === trocaPlantaoForm.team_id
+            )
       );
       filtered.push({
-        id: `ovr-${Date.now()}`,
+        id: trocaPlantaoForm.id || `ovr-${Date.now()}`,
         date: trocaPlantaoForm.date,
         team_id: trocaPlantaoForm.team_id,
         status: "troca",
-        custom_name: trocaPlantaoForm.custom_name.trim() || targetTeam.name,
-        note: "Troca de plantão",
+        member_out: trocaPlantaoForm.member_out || null,
+        member_in: trocaPlantaoForm.member_in || null,
+        custom_name: autoLabel,
+        note: autoNote,
       });
       return { ...prev, overrides: filtered };
     });
-    notify?.("Troca de plantão registrada!");
+    setTrocaPlantaoForm((prev) => ({
+      ...prev,
+      id: null,
+      member_out: "",
+      member_in: "",
+      custom_name: "",
+      note: "",
+    }));
+    notify?.("Troca de plantão salva com sucesso!");
   }
 
   function handleSwapDayBetweenTwoTeams(e) {
@@ -610,26 +687,70 @@ export default function AdminView({
 
   function handleSavePointOverride(e) {
     e.preventDefault();
+    const isEditing = Boolean(pointOverrideForm.id);
+    const members = getTeamMembersList(pointOverrideForm.team_id);
+    let computedCustom = pointOverrideForm.custom_name?.trim() || null;
+
+    if (!computedCustom && pointOverrideForm.member) {
+      const otherMembers = members.filter((m) => m !== pointOverrideForm.member);
+      if (pointOverrideForm.member_in) {
+        computedCustom = [...otherMembers, pointOverrideForm.member_in].join(" / ");
+      } else {
+        computedCustom = `${pointOverrideForm.member} (${
+          STATUS_META[pointOverrideForm.status]?.short || pointOverrideForm.status
+        })${otherMembers.length ? ` · ${otherMembers.join("/")} normal` : ""}`;
+      }
+    }
+
     setAppState((prev) => {
-      const filtered = prev.overrides.filter(
-        (o) =>
-          !(
-            o.date === pointOverrideForm.date &&
-            o.team_id === pointOverrideForm.team_id
-          )
+      const filtered = prev.overrides.filter((o) =>
+        isEditing
+          ? o.id !== pointOverrideForm.id
+          : !(
+              o.date === pointOverrideForm.date &&
+              o.team_id === pointOverrideForm.team_id &&
+              (o.member || "") === (pointOverrideForm.member || "")
+            )
       );
       filtered.push({
-        id: `ovr-${Date.now()}`,
+        id: pointOverrideForm.id || `ovr-${Date.now()}`,
         date: pointOverrideForm.date,
         team_id: pointOverrideForm.team_id,
+        member: pointOverrideForm.member || null,
+        member_out:
+          pointOverrideForm.status === "troca" && pointOverrideForm.member
+            ? pointOverrideForm.member
+            : null,
+        member_in: pointOverrideForm.member_in || null,
         status: pointOverrideForm.status,
-        custom_name: pointOverrideForm.custom_name.trim() || null,
-        note: pointOverrideForm.note.trim() || null,
+        custom_name: computedCustom,
+        note: pointOverrideForm.note?.trim() || null,
       });
       return { ...prev, overrides: filtered };
     });
-    setPointOverrideForm((prev) => ({ ...prev, custom_name: "", note: "" }));
-    notify?.("Ajuste pontual salvo!");
+    setPointOverrideForm((prev) => ({
+      ...prev,
+      id: null,
+      member: "",
+      member_in: "",
+      custom_name: "",
+      note: "",
+    }));
+    notify?.(isEditing ? "Ajuste atualizado!" : "Ajuste pontual salvo!");
+  }
+
+  function handleEditOverride(ovr) {
+    setPointOverrideForm({
+      id: ovr.id,
+      team_id: ovr.team_id,
+      member: ovr.member || ovr.member_out || "",
+      member_in: ovr.member_in || "",
+      date: ovr.date,
+      status: ovr.status,
+      custom_name: ovr.custom_name || "",
+      note: ovr.note || "",
+    });
+    notify?.("Editando ajuste selecionado no formulário acima.");
   }
 
   function handleDeleteOverride(id) {
@@ -637,6 +758,9 @@ export default function AdminView({
       ...prev,
       overrides: prev.overrides.filter((o) => o.id !== id),
     }));
+    if (pointOverrideForm.id === id) {
+      setPointOverrideForm((prev) => ({ ...prev, id: null }));
+    }
     notify?.("Ajuste removido.");
   }
 
@@ -646,22 +770,52 @@ export default function AdminView({
       notify?.("A data final deve ser igual ou posterior à data inicial.", "error");
       return;
     }
-    setAppState((prev) => ({
+    const isEditing = Boolean(absenceForm.id);
+    setAppState((prev) => {
+      const filtered = isEditing
+        ? prev.absences.filter((a) => a.id !== absenceForm.id)
+        : [...prev.absences];
+      filtered.push({
+        id: absenceForm.id || `abs-${Date.now()}`,
+        team_id: absenceForm.team_id,
+        member: absenceForm.member || null,
+        substitute_member: absenceForm.substitute_member || null,
+        kind: absenceForm.kind,
+        start_date: absenceForm.start_date,
+        end_date: absenceForm.end_date,
+        note: absenceForm.note?.trim() || null,
+      });
+      return {
+        ...prev,
+        absences: filtered,
+      };
+    });
+    setAbsenceForm((prev) => ({
       ...prev,
-      absences: [
-        ...prev.absences,
-        {
-          id: `abs-${Date.now()}`,
-          team_id: absenceForm.team_id,
-          kind: absenceForm.kind,
-          start_date: absenceForm.start_date,
-          end_date: absenceForm.end_date,
-          note: absenceForm.note.trim() || null,
-        },
-      ],
+      id: null,
+      member: "",
+      substitute_member: "",
+      note: "",
     }));
-    setAbsenceForm((prev) => ({ ...prev, note: "" }));
-    notify?.("Período de férias/ausência cadastrado!");
+    notify?.(
+      isEditing
+        ? "Férias/ausência atualizada com sucesso!"
+        : "Período de férias/ausência cadastrado!"
+    );
+  }
+
+  function handleEditAbsence(abs) {
+    setAbsenceForm({
+      id: abs.id,
+      team_id: abs.team_id,
+      member: abs.member || "",
+      substitute_member: abs.substitute_member || "",
+      kind: abs.kind,
+      start_date: abs.start_date,
+      end_date: abs.end_date,
+      note: abs.note || "",
+    });
+    notify?.("Editando férias/ausência selecionada.");
   }
 
   function handleDeleteAbsence(id) {
@@ -669,6 +823,9 @@ export default function AdminView({
       ...prev,
       absences: prev.absences.filter((a) => a.id !== id),
     }));
+    if (absenceForm.id === id) {
+      setAbsenceForm((prev) => ({ ...prev, id: null }));
+    }
     notify?.("Férias/ausência removida.");
   }
 
@@ -1535,24 +1692,24 @@ export default function AdminView({
       )}
 
       {/* ===================================================================== */}
-      {/* TAB 4: TROCAS E AJUSTES                                               */}
+      {/* TAB 4: TROCAS E AJUSTES (SMART INDIVIDUAL & DUO SWAPS + EDITABLE)     */}
       {/* ===================================================================== */}
       {activeTab === "ajustes" && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Card 1: Troca de plantão */}
+            {/* Card 1: Troca de plantão (Inteligente: Dupla toda ou só 1 pessoa da dupla) */}
             <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
               <h2 className="font-heading text-[16px] font-bold text-[#14181F] mb-1">
-                Troca de plantão
+                Troca de plantão (Dupla ou 1 pessoa)
               </h2>
               <p className="text-[12px] text-[#6B7280] mb-3">
-                Exibe um nome personalizado no dia (ex: Lucas / Alison) com a
-                cor de Troca.
+                Permite trocar a dupla inteira ou somente 1 integrante da dupla
+                (montando a nova dupla do dia automaticamente).
               </p>
               <form onSubmit={handleSaveTrocaPlantao} className="space-y-2.5">
                 <div>
                   <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
-                    Dia do plantão
+                    Dia do plantão / troca
                   </label>
                   <input
                     type="date"
@@ -1568,7 +1725,7 @@ export default function AdminView({
                 </div>
                 <div>
                   <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
-                    Equipe que trocou
+                    Equipe original
                   </label>
                   <select
                     value={trocaPlantaoForm.team_id}
@@ -1576,6 +1733,7 @@ export default function AdminView({
                       setTrocaPlantaoForm({
                         ...trocaPlantaoForm,
                         team_id: e.target.value,
+                        member_out: "",
                       })
                     }
                     className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
@@ -1587,9 +1745,55 @@ export default function AdminView({
                     ))}
                   </select>
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-medium text-[#42474F] mb-1">
+                      Quem saiu?
+                    </label>
+                    <select
+                      value={trocaPlantaoForm.member_out}
+                      onChange={(e) =>
+                        setTrocaPlantaoForm({
+                          ...trocaPlantaoForm,
+                          member_out: e.target.value,
+                        })
+                      }
+                      className="w-full h-9 px-2.5 rounded-xl border border-[#E5E4DF] text-[12.5px]"
+                    >
+                      <option value="">A dupla toda</option>
+                      {getTeamMembersList(trocaPlantaoForm.team_id).map((m) => (
+                        <option key={m} value={m}>
+                          Somente {m}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-[#42474F] mb-1">
+                      Quem cobriu?
+                    </label>
+                    <select
+                      value={trocaPlantaoForm.member_in}
+                      onChange={(e) =>
+                        setTrocaPlantaoForm({
+                          ...trocaPlantaoForm,
+                          member_in: e.target.value,
+                        })
+                      }
+                      className="w-full h-9 px-2.5 rounded-xl border border-[#E5E4DF] text-[12.5px]"
+                    >
+                      <option value="">Escolher / digitar...</option>
+                      {allEmployeesList.map((emp) => (
+                        <option key={emp.name} value={emp.name}>
+                          {emp.name} ({emp.teamName})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
                 <div>
                   <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
-                    Nome que aparece no dia
+                    Nome no calendário (automático ou personalizado)
                   </label>
                   <input
                     type="text"
@@ -1600,7 +1804,12 @@ export default function AdminView({
                         custom_name: e.target.value,
                       })
                     }
-                    placeholder="Ex: Lucas / Alison"
+                    placeholder={computeAutoSwapLabel(
+                      trocaPlantaoForm.team_id,
+                      trocaPlantaoForm.member_out,
+                      trocaPlantaoForm.member_in,
+                      ""
+                    )}
                     className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
                   />
                 </div>
@@ -1749,17 +1958,47 @@ export default function AdminView({
             </div>
           </div>
 
-          {/* Card 4: Ajuste pontual de um dia */}
+          {/* Card 4: Ajuste pontual de um dia (com suporte a 1 pessoa da dupla + Edição) */}
           <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
-            <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-3">
-              Ajuste pontual de um dia
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="font-heading text-[17px] font-bold text-[#14181F]">
+                  {pointOverrideForm.id
+                    ? "Editando Ajuste / Troca"
+                    : "Ajuste pontual de um dia (Equipe ou 1 Pessoa da Dupla)"}
+                </h2>
+                <p className="text-[12.5px] text-[#6B7280]">
+                  Você pode aplicar o ajuste na dupla toda ou escolher somente 1
+                  funcionário da dupla (o outro integrante continua trabalhando
+                  normalmente).
+                </p>
+              </div>
+              {pointOverrideForm.id && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPointOverrideForm((prev) => ({
+                      ...prev,
+                      id: null,
+                      member: "",
+                      member_in: "",
+                      custom_name: "",
+                      note: "",
+                    }))
+                  }
+                  className="px-3 h-8 rounded-full bg-[#F4F3EE] text-[12px] font-semibold text-[#14181F] hover:bg-[#E5E4DF]"
+                >
+                  Cancelar edição
+                </button>
+              )}
+            </div>
+
             <form
               onSubmit={handleSavePointOverride}
-              className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end mb-4"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2.5 items-end mb-4 p-3.5 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6]"
             >
               <div>
-                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
                   Equipe
                 </label>
                 <select
@@ -1768,9 +2007,10 @@ export default function AdminView({
                     setPointOverrideForm({
                       ...pointOverrideForm,
                       team_id: e.target.value,
+                      member: "",
                     })
                   }
-                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
+                  className="w-full h-10 px-2.5 rounded-xl border border-[#E5E4DF] bg-white text-[13px]"
                 >
                   {activeTeams.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -1780,7 +2020,29 @@ export default function AdminView({
                 </select>
               </div>
               <div>
-                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
+                  Integrante
+                </label>
+                <select
+                  value={pointOverrideForm.member}
+                  onChange={(e) =>
+                    setPointOverrideForm({
+                      ...pointOverrideForm,
+                      member: e.target.value,
+                    })
+                  }
+                  className="w-full h-10 px-2.5 rounded-xl border border-[#E5E4DF] bg-white text-[13px]"
+                >
+                  <option value="">A dupla toda</option>
+                  {getTeamMembersList(pointOverrideForm.team_id).map((m) => (
+                    <option key={m} value={m}>
+                      Somente {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
                   Data
                 </label>
                 <input
@@ -1792,11 +2054,11 @@ export default function AdminView({
                       date: e.target.value,
                     })
                   }
-                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
+                  className="w-full h-10 px-2.5 rounded-xl border border-[#E5E4DF] bg-white text-[13px]"
                 />
               </div>
               <div>
-                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
                   Situação
                 </label>
                 <select
@@ -1807,7 +2069,7 @@ export default function AdminView({
                       status: e.target.value,
                     })
                   }
-                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
+                  className="w-full h-10 px-2.5 rounded-xl border border-[#E5E4DF] bg-white text-[13px]"
                 >
                   {Object.entries(STATUS_META)
                     .filter(([k]) => k !== "feriado")
@@ -1819,8 +2081,30 @@ export default function AdminView({
                 </select>
               </div>
               <div>
-                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
-                  Observação / Nome no dia
+                <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
+                  Substituto (se houver)
+                </label>
+                <select
+                  value={pointOverrideForm.member_in}
+                  onChange={(e) =>
+                    setPointOverrideForm({
+                      ...pointOverrideForm,
+                      member_in: e.target.value,
+                    })
+                  }
+                  className="w-full h-10 px-2.5 rounded-xl border border-[#E5E4DF] bg-white text-[13px]"
+                >
+                  <option value="">Nenhum</option>
+                  {allEmployeesList.map((emp) => (
+                    <option key={emp.name} value={emp.name}>
+                      {emp.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
+                  Nome exibido / Obs.
                 </label>
                 <input
                   type="text"
@@ -1831,34 +2115,51 @@ export default function AdminView({
                       custom_name: e.target.value,
                     })
                   }
-                  placeholder="Opcional"
-                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
+                  placeholder="Automático"
+                  className="w-full h-10 px-2.5 rounded-xl border border-[#E5E4DF] bg-white text-[13px]"
                 />
               </div>
               <button
                 type="submit"
-                className="h-10 px-5 rounded-full bg-[#14181F] text-white text-[13px] font-semibold hover:bg-[#272D38]"
+                className="h-10 px-4 rounded-full bg-[#14181F] text-white text-[13px] font-semibold hover:bg-[#272D38]"
               >
-                + Salvar
+                {pointOverrideForm.id ? "Salvar Edição" : "+ Salvar"}
               </button>
             </form>
 
-            {/* List of existing point overrides */}
+            {/* List of existing point overrides & swaps with Edit + Delete */}
             <div className="divide-y divide-[#F2F1EC]">
               {appState.overrides.map((ovr) => {
                 const t = appState.teams.find((x) => x.id === ovr.team_id);
+                const indivMember = ovr.member || ovr.member_out;
                 return (
                   <div
                     key={ovr.id}
-                    className="py-2.5 flex items-center justify-between text-[13px]"
+                    className={`py-2.5 px-2 rounded-xl flex items-center justify-between gap-2 text-[13px] ${
+                      pointOverrideForm.id === ovr.id ? "bg-[#F3F2ED]" : ""
+                    }`}
                   >
-                    <div className="flex flex-wrap items-center gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono font-semibold tabular-nums">
                         {formatShortDate(ovr.date)}
                       </span>
                       <span className="font-semibold text-[#14181F]">
                         {t?.name || "Equipe"}
                       </span>
+                      {indivMember ? (
+                        <span className="px-2 py-0.5 rounded-full bg-[#14181F] text-white text-[11px] font-semibold">
+                          Somente {indivMember}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full bg-[#EBEBE6] text-[#42474F] text-[11px] font-medium">
+                          Dupla toda
+                        </span>
+                      )}
+                      {ovr.member_in && (
+                        <span className="px-2 py-0.5 rounded-full bg-[#10B981]/15 text-[#065F46] text-[11px] font-semibold">
+                          Coberto por {ovr.member_in}
+                        </span>
+                      )}
                       <span className="px-2.5 py-0.5 rounded-full bg-[#F3F2ED] text-[11.5px] font-medium">
                         {STATUS_META[ovr.status]?.label || ovr.status}
                       </span>
@@ -1873,37 +2174,83 @@ export default function AdminView({
                         </span>
                       )}
                     </div>
-                    <button
-                      onClick={() => handleDeleteOverride(ovr.id)}
-                      className="w-8 h-8 rounded-full text-[#EF4444] hover:bg-[#EF4444]/10 flex items-center justify-center"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleEditOverride(ovr)}
+                        title="Editar troca / ajuste"
+                        className="w-8 h-8 rounded-full text-[#14181F] hover:bg-[#F3F2ED] flex items-center justify-center"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteOverride(ovr.id)}
+                        title="Excluir troca / ajuste"
+                        className="w-8 h-8 rounded-full text-[#EF4444] hover:bg-[#EF4444]/10 flex items-center justify-center"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Card 5: Férias e ausências */}
+          {/* Card 5: Férias e ausências (Suporta 1 pessoa da dupla + Substituto + Edição) */}
           <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
-            <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-3">
-              Férias e ausências
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="font-heading text-[17px] font-bold text-[#14181F]">
+                  {absenceForm.id
+                    ? "Editando Férias / Ausência"
+                    : "Férias e ausências (Dupla toda ou somente 1 funcionário)"}
+                </h2>
+                <p className="text-[12.5px] text-[#6B7280]">
+                  Exemplo: Se o <strong>Welliton</strong> sair de férias e você
+                  selecionar <em>&quot;Somente Welliton&quot;</em>, o{" "}
+                  <strong>Igor</strong> continua contando os dias trabalhados
+                  normalmente.
+                </p>
+              </div>
+              {absenceForm.id && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAbsenceForm((prev) => ({
+                      ...prev,
+                      id: null,
+                      member: "",
+                      substitute_member: "",
+                      note: "",
+                    }))
+                  }
+                  className="px-3 h-8 rounded-full bg-[#F4F3EE] text-[12px] font-semibold text-[#14181F] hover:bg-[#E5E4DF]"
+                >
+                  Cancelar edição
+                </button>
+              )}
+            </div>
+
             <form
               onSubmit={handleSaveAbsence}
-              className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-end mb-4"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-2.5 items-end mb-4 p-3.5 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6]"
             >
               <div>
-                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
                   Equipe
                 </label>
                 <select
                   value={absenceForm.team_id}
                   onChange={(e) =>
-                    setAbsenceForm({ ...absenceForm, team_id: e.target.value })
+                    setAbsenceForm({
+                      ...absenceForm,
+                      team_id: e.target.value,
+                      member: "",
+                    })
                   }
-                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
+                  className="w-full h-10 px-2.5 rounded-xl border border-[#E5E4DF] bg-white text-[13px]"
                 >
                   {activeTeams.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -1913,7 +2260,48 @@ export default function AdminView({
                 </select>
               </div>
               <div>
-                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
+                  Quem saiu?
+                </label>
+                <select
+                  value={absenceForm.member}
+                  onChange={(e) =>
+                    setAbsenceForm({ ...absenceForm, member: e.target.value })
+                  }
+                  className="w-full h-10 px-2.5 rounded-xl border border-[#E5E4DF] bg-white text-[13px]"
+                >
+                  <option value="">A dupla toda</option>
+                  {getTeamMembersList(absenceForm.team_id).map((m) => (
+                    <option key={m} value={m}>
+                      Somente {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
+                  Substituto (opc.)
+                </label>
+                <select
+                  value={absenceForm.substitute_member}
+                  onChange={(e) =>
+                    setAbsenceForm({
+                      ...absenceForm,
+                      substitute_member: e.target.value,
+                    })
+                  }
+                  className="w-full h-10 px-2.5 rounded-xl border border-[#E5E4DF] bg-white text-[13px]"
+                >
+                  <option value="">Sem substituto</option>
+                  {allEmployeesList.map((emp) => (
+                    <option key={emp.name} value={emp.name}>
+                      {emp.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
                   Tipo
                 </label>
                 <select
@@ -1921,14 +2309,14 @@ export default function AdminView({
                   onChange={(e) =>
                     setAbsenceForm({ ...absenceForm, kind: e.target.value })
                   }
-                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
+                  className="w-full h-10 px-2.5 rounded-xl border border-[#E5E4DF] bg-white text-[13px]"
                 >
                   <option value="ferias">Férias</option>
                   <option value="ausencia">Ausência</option>
                 </select>
               </div>
               <div>
-                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
                   De
                 </label>
                 <input
@@ -1940,11 +2328,11 @@ export default function AdminView({
                       start_date: e.target.value,
                     })
                   }
-                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
+                  className="w-full h-10 px-2.5 rounded-xl border border-[#E5E4DF] bg-white text-[13px]"
                 />
               </div>
               <div>
-                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
                   Até
                 </label>
                 <input
@@ -1953,11 +2341,11 @@ export default function AdminView({
                   onChange={(e) =>
                     setAbsenceForm({ ...absenceForm, end_date: e.target.value })
                   }
-                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
+                  className="w-full h-10 px-2.5 rounded-xl border border-[#E5E4DF] bg-white text-[13px]"
                 />
               </div>
               <div>
-                <label className="block text-[12px] font-medium text-[#42474F] mb-1">
+                <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
                   Observação
                 </label>
                 <input
@@ -1967,30 +2355,53 @@ export default function AdminView({
                     setAbsenceForm({ ...absenceForm, note: e.target.value })
                   }
                   placeholder="Opcional"
-                  className="w-full h-10 px-3 rounded-xl border border-[#E5E4DF] text-[13px]"
+                  className="w-full h-10 px-2.5 rounded-xl border border-[#E5E4DF] bg-white text-[13px]"
                 />
               </div>
               <button
                 type="submit"
-                className="h-10 px-5 rounded-full bg-[#14181F] text-white text-[13px] font-semibold hover:bg-[#272D38]"
+                className="h-10 px-4 rounded-full bg-[#14181F] text-white text-[13px] font-semibold hover:bg-[#272D38]"
               >
-                + Salvar
+                {absenceForm.id ? "Salvar Edição" : "+ Salvar"}
               </button>
             </form>
 
-            {/* List of existing absences */}
+            {/* List of existing absences with Edit + Delete */}
             <div className="divide-y divide-[#F2F1EC]">
               {appState.absences.map((abs) => {
                 const t = appState.teams.find((x) => x.id === abs.team_id);
+                const teamMembers = getTeamMembersList(abs.team_id);
+                const remainingWorking = abs.member
+                  ? teamMembers.filter((m) => m !== abs.member)
+                  : [];
                 return (
                   <div
                     key={abs.id}
-                    className="py-2.5 flex items-center justify-between text-[13px]"
+                    className={`py-2.5 px-2 rounded-xl flex items-center justify-between gap-2 text-[13px] ${
+                      absenceForm.id === abs.id ? "bg-[#F3F2ED]" : ""
+                    }`}
                   >
-                    <div className="flex flex-wrap items-center gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-[#14181F]">
                         {t?.name || "Equipe"}
                       </span>
+                      {abs.member ? (
+                        <span className="px-2.5 py-0.5 rounded-full bg-[#14181F] text-white text-[11px] font-semibold">
+                          Somente {abs.member}
+                          {remainingWorking.length > 0
+                            ? ` (${remainingWorking.join("/")} trabalha normal)`
+                            : ""}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full bg-[#EBEBE6] text-[#42474F] text-[11px] font-medium">
+                          Dupla toda
+                        </span>
+                      )}
+                      {abs.substitute_member && (
+                        <span className="px-2 py-0.5 rounded-full bg-[#10B981]/15 text-[#065F46] text-[11px] font-semibold">
+                          Substituto: {abs.substitute_member}
+                        </span>
+                      )}
                       <span className="px-2.5 py-0.5 rounded-full bg-[#EAB308]/20 text-[#854D0E] text-[11.5px] font-semibold">
                         {abs.kind === "ausencia" ? "Ausência" : "Férias"}
                       </span>
@@ -2004,12 +2415,24 @@ export default function AdminView({
                         </span>
                       )}
                     </div>
-                    <button
-                      onClick={() => handleDeleteAbsence(abs.id)}
-                      className="w-8 h-8 rounded-full text-[#EF4444] hover:bg-[#EF4444]/10 flex items-center justify-center"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleEditAbsence(abs)}
+                        title="Editar férias / ausência"
+                        className="w-8 h-8 rounded-full text-[#14181F] hover:bg-[#F3F2ED] flex items-center justify-center"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAbsence(abs.id)}
+                        title="Excluir férias / ausência"
+                        className="w-8 h-8 rounded-full text-[#EF4444] hover:bg-[#EF4444]/10 flex items-center justify-center"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 );
               })}

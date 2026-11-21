@@ -117,7 +117,9 @@ export const INITIAL_OVERRIDES = [
     team_id: "6ae3ae28910b0403b224d7a4",
     status: "troca",
     custom_name: "Lucas / Alison",
-    note: "Troca de plantão Dia da Consciência Negra",
+    member_out: "Felipe",
+    member_in: "Alison",
+    note: "Troca de plantão Dia da Consciência Negra (Alison cobriu Felipe)",
   },
   {
     id: "ovr-nov-20-facao",
@@ -125,15 +127,19 @@ export const INITIAL_OVERRIDES = [
     team_id: "6ae3ae28910b0403b224d7a5",
     status: "troca",
     custom_name: "Lucas / Alison",
-    note: "Troca de plantão Dia da Consciência Negra",
+    member_out: "Felipe",
+    member_in: "Alison",
+    note: "Troca de plantão Dia da Consciência Negra (Alison cobriu Felipe)",
   },
   {
     id: "ovr-nov-22-lucas",
     date: "2026-11-22",
     team_id: "6ae3ae28910b0403b224d7a4",
     status: "troca",
-    custom_name: "Lucas / Alisson",
-    note: "Troca de plantão de domingo",
+    custom_name: "Lucas / Alison",
+    member_out: "Facão",
+    member_in: "Lucas",
+    note: "Troca de plantão de domingo (Lucas cobriu Facão)",
   },
   {
     id: "ovr-nov-22-facao",
@@ -141,7 +147,9 @@ export const INITIAL_OVERRIDES = [
     team_id: "6ae3ae28910b0403b224d7a5",
     status: "troca",
     custom_name: "Lucas / Alison",
-    note: "Troca de plantão de domingo",
+    member_out: "Facão",
+    member_in: "Lucas",
+    note: "Troca de plantão de domingo (Lucas cobriu Facão)",
   },
 ];
 
@@ -149,6 +157,8 @@ export const INITIAL_ABSENCES = [
   {
     id: "abs-nov-01-welliton",
     team_id: "6ae3ae28910b0403b224d7a7",
+    member: null,
+    substitute_member: null,
     kind: "ausencia",
     start_date: "2026-11-01",
     end_date: "2026-11-01",
@@ -157,10 +167,12 @@ export const INITIAL_ABSENCES = [
   {
     id: "abs-nov-17-21-welliton",
     team_id: "6ae3ae28910b0403b224d7a7",
+    member: "Welliton",
+    substitute_member: null,
     kind: "ferias",
     start_date: "2026-11-17",
     end_date: "2026-11-21",
-    note: "Férias programadas",
+    note: "Férias do Welliton (Igor permaneceu trabalhando normal)",
   },
 ];
 
@@ -606,10 +618,16 @@ export function buildCalendar({
     overridesByDate[ovr.date].push(ovr);
   }
 
-  function findAbsence(teamId, iso) {
-    return absences.find(
+  function findAbsences(teamId, iso) {
+    return absences.filter(
       (a) => a.team_id === teamId && a.start_date <= iso && iso <= a.end_date
     );
+  }
+
+  function getTeamMembers(team) {
+    return team.members?.length
+      ? team.members
+      : team.name.split("/").map((s) => s.trim()).filter(Boolean);
   }
 
   // Build final requested range
@@ -662,20 +680,100 @@ export function buildCalendar({
       let finalStatus = baseStatus;
       let note = null;
       let customName = null;
-
-      // Apply Vacation / Absence
-      const absence = findAbsence(team.id, iso);
-      if (absence) {
-        finalStatus = absence.kind === "ausencia" ? "ausencia" : "ferias";
-        note = absence.note || null;
+      const members = getTeamMembers(team);
+      const memberStatuses = {};
+      for (const m of members) {
+        memberStatuses[m] = baseStatus;
       }
 
-      // Apply Manual ScheduleOverride (highest priority)
-      const ovr = overridesByDateTeam[`${iso}:${team.id}`];
-      if (ovr) {
+      // Apply Vacation / Absence (whole team or single member of the duo)
+      const dayAbsences = findAbsences(team.id, iso);
+      let activeRemainingMembers = [...members];
+
+      for (const absence of dayAbsences) {
+        const absStatus = absence.kind === "ausencia" ? "ausencia" : "ferias";
+        note = absence.note || note;
+
+        if (absence.member && members.includes(absence.member)) {
+          // Only 1 person of the duo is on vacation/absence!
+          memberStatuses[absence.member] = absStatus;
+          activeRemainingMembers = activeRemainingMembers.filter(
+            (m) => m !== absence.member
+          );
+          if (absence.substitute_member) {
+            activeRemainingMembers.push(absence.substitute_member);
+            memberStatuses[absence.substitute_member] =
+              baseStatus === "folga" ? "troca" : baseStatus;
+          }
+          // Visual badge on the team row shows ferias/ausencia, while customName shows who is working and who is out
+          finalStatus = absStatus;
+          if (
+            ["trabalha", "plantao_domingo", "plantao_feriado", "alteracao"].includes(
+              baseStatus
+            )
+          ) {
+            const workingStr =
+              activeRemainingMembers.length > 0
+                ? `${activeRemainingMembers.join(" / ")} (trabalha)`
+                : "";
+            customName = `${absence.member} (${
+              absStatus === "ferias" ? "Férias" : "Ausente"
+            })${workingStr ? ` · ${workingStr}` : ""}`;
+          } else {
+            customName = `${absence.member} (${
+              absStatus === "ferias" ? "Férias" : "Ausente"
+            })`;
+          }
+        } else {
+          // Whole team is on vacation/absence
+          finalStatus = absStatus;
+          for (const m of members) {
+            memberStatuses[m] = absStatus;
+          }
+        }
+      }
+
+      // Apply Manual ScheduleOverride (whole team or single member of the duo)
+      const teamOverrides = (overridesByDate[iso] || []).filter(
+        (o) => o.team_id === team.id
+      );
+
+      for (const ovr of teamOverrides) {
         finalStatus = ovr.status;
         note = ovr.note || note;
-        customName = ovr.custom_name || null;
+
+        if (ovr.member && members.includes(ovr.member)) {
+          // Individual member adjustment
+          memberStatuses[ovr.member] = ovr.status;
+          if (ovr.member_in) {
+            memberStatuses[ovr.member_in] =
+              ovr.status === "folga" ? "troca" : ovr.status;
+          }
+        } else if (ovr.member_out && members.includes(ovr.member_out)) {
+          // Smart 1-person swap: member_out rested, member_in worked in their place
+          memberStatuses[ovr.member_out] = "folga";
+          if (ovr.member_in) {
+            memberStatuses[ovr.member_in] = "troca";
+          }
+        } else if (ovr.custom_name && ovr.status === "troca") {
+          // Parse custom_name like "Lucas / Alison"
+          const customList = ovr.custom_name
+            .split("/")
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .map((n) => (n === "Alisson" ? "Alison" : n));
+          for (const m of members) {
+            memberStatuses[m] = customList.includes(m) ? "troca" : "folga";
+          }
+        } else {
+          for (const m of members) {
+            memberStatuses[m] = ovr.status;
+          }
+        }
+
+        if (ovr.custom_name) {
+          customName = ovr.custom_name;
+        }
       }
 
       teamStatuses[team.id] = {
@@ -683,6 +781,7 @@ export function buildCalendar({
         base_status: baseStatus,
         note,
         custom_name: customName,
+        member_statuses: memberStatuses,
       };
     }
 
@@ -837,60 +936,57 @@ export function buildEmployeeWorkdaySummary(calendarData, teams, services = []) 
   const sortedDays = Object.values(calendarData.days).sort((a, b) => a.date.localeCompare(b.date));
 
   for (const day of sortedDays) {
-    // Check if there is a custom swap label on this day (e.g. "Lucas / Alison")
-    const swapParticipants = new Set();
-    for (const team of activeTeams) {
-      const entry = day.teams?.[team.id];
-      if (entry?.status === "troca" && entry?.custom_name) {
-        entry.custom_name
-          .split("/")
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .forEach((n) => {
-            // Normalize "Alisson" -> "Alison" if matching existing member
-            const normalized = n === "Alisson" && employeeMap["Alison"] ? "Alison" : n;
-            swapParticipants.add(normalized);
-          });
-      }
-    }
+    // 1. Check if any external substitute worked on this day (from member_in or substitute_member)
+    const creditedOnDay = new Set();
 
     for (const team of activeTeams) {
       const entry = day.teams?.[team.id];
       if (!entry) continue;
-      const members = team.members?.length
-        ? team.members
-        : team.name.split("/").map((s) => s.trim()).filter(Boolean);
+      const memberStatuses = entry.member_statuses || {};
 
-      for (const m of members) {
-        const emp = ensureEmployee(m, team);
+      for (const [mName, mStatus] of Object.entries(memberStatuses)) {
+        const normalized =
+          mName === "Alisson" && employeeMap["Alison"] ? "Alison" : mName;
+        const emp = employeeMap[normalized] || ensureEmployee(normalized, team);
         if (!emp) continue;
 
-        if (entry.status === "troca") {
-          // If custom_name is specified, only the named employees in the swap actually worked that day
-          const workedInSwap = swapParticipants.size === 0 || swapParticipants.has(m);
-          if (workedInSwap) {
+        // Avoid double counting if an employee is listed as substitute in another team and also in their own team on the same day
+        const dayKey = `${day.date}:${emp.name}`;
+
+        if (
+          ["trabalha", "alteracao", "plantao_domingo", "plantao_feriado", "troca"].includes(
+            mStatus
+          )
+        ) {
+          if (creditedOnDay.has(dayKey)) continue;
+          creditedOnDay.add(dayKey);
+
+          if (mStatus === "troca") {
             emp.trocasTrabalhadas++;
             emp.totalTrabalhado++;
-            emp.datesWorked.push({ date: day.date, type: "Troca de plantão" });
+            emp.datesWorked.push({ date: day.date, type: "Troca / Cobertura" });
+          } else if (mStatus === "plantao_domingo") {
+            emp.plantoesDomingo++;
+            emp.totalTrabalhado++;
+            emp.datesWorked.push({ date: day.date, type: "Plantão de domingo" });
+          } else if (mStatus === "plantao_feriado") {
+            emp.plantoesFeriado++;
+            emp.totalTrabalhado++;
+            emp.datesWorked.push({ date: day.date, type: "Plantão de feriado" });
           } else {
+            emp.diasNormais++;
+            emp.totalTrabalhado++;
+            emp.datesWorked.push({ date: day.date, type: "Dia normal" });
+          }
+        } else if (mStatus === "ferias" || mStatus === "ausencia") {
+          // Only record vacation/absence when evaluating the employee's primary team
+          if (emp.teamId === team.id) {
+            emp.feriasAusencias++;
+          }
+        } else {
+          if (emp.teamId === team.id && !creditedOnDay.has(dayKey)) {
             emp.folgas++;
           }
-        } else if (entry.status === "trabalha" || entry.status === "alteracao") {
-          emp.diasNormais++;
-          emp.totalTrabalhado++;
-          emp.datesWorked.push({ date: day.date, type: "Dia normal" });
-        } else if (entry.status === "plantao_domingo") {
-          emp.plantoesDomingo++;
-          emp.totalTrabalhado++;
-          emp.datesWorked.push({ date: day.date, type: "Plantão de domingo" });
-        } else if (entry.status === "plantao_feriado") {
-          emp.plantoesFeriado++;
-          emp.totalTrabalhado++;
-          emp.datesWorked.push({ date: day.date, type: "Plantão de feriado" });
-        } else if (entry.status === "ferias" || entry.status === "ausencia") {
-          emp.feriasAusencias++;
-        } else {
-          emp.folgas++;
         }
       }
     }
