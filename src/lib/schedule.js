@@ -677,33 +677,44 @@ export function buildCalendar({
       for (const ovr of teamOverrides) {
         finalStatus = ovr.status;
         note = ovr.note || note;
+        const dutyActiveStatus =
+          weekday === 0
+            ? "plantao_domingo"
+            : isRealHoliday
+            ? "plantao_feriado"
+            : ovr.status === "troca"
+            ? "troca"
+            : ovr.status;
+        const restDayStatus = isRealHoliday ? "feriado" : "folga";
 
-        if (ovr.member && members.includes(ovr.member)) {
-          // Individual member adjustment
-          memberStatuses[ovr.member] = ovr.status;
-          if (ovr.member_in) {
-            memberStatuses[ovr.member_in] =
-              ovr.status === "folga" ? "troca" : ovr.status;
-          }
-        } else if (ovr.member_out && members.includes(ovr.member_out)) {
-          // Smart 1-person swap: member_out rested, member_in worked in their place
-          memberStatuses[ovr.member_out] = "folga";
-          if (ovr.member_in) {
-            memberStatuses[ovr.member_in] = "troca";
-          }
-        } else if (ovr.custom_name && ovr.status === "troca") {
-          // Parse custom_name like "Lucas / Alison"
+        if (ovr.custom_name && ovr.status === "troca") {
+          // When custom_name is present on a duty swap (e.g. "Lucas / Alison"),
+          // any member of this team whose name is in custom_name is ON DUTY (Plantão),
+          // while any member of this team NOT in custom_name is OFF (Folga/Feriado)!
           const customList = ovr.custom_name
             .split("/")
             .map((s) => s.trim())
             .filter(Boolean)
             .map((n) => (n === "Alisson" ? "Alison" : n));
+
           for (const m of members) {
-            memberStatuses[m] = customList.includes(m) ? "troca" : "folga";
+            memberStatuses[m] = customList.includes(m)
+              ? dutyActiveStatus
+              : restDayStatus;
+          }
+        } else if (ovr.member && members.includes(ovr.member)) {
+          // Individual member adjustment
+          memberStatuses[ovr.member] = ovr.status;
+        } else if (ovr.member_out && members.includes(ovr.member_out)) {
+          // Smart 1-person swap: member_out rested, the remaining partner of this team worked the duty
+          for (const m of members) {
+            memberStatuses[m] =
+              m === ovr.member_out ? restDayStatus : dutyActiveStatus;
           }
         } else {
           for (const m of members) {
-            memberStatuses[m] = ovr.status;
+            memberStatuses[m] =
+              ovr.status === "troca" ? dutyActiveStatus : ovr.status;
           }
         }
 
@@ -719,6 +730,28 @@ export function buildCalendar({
         custom_name: customName,
         member_statuses: memberStatuses,
       };
+    }
+
+    // 2. Also check if any team override on this day specifies an external member_in who wasn't in their own team's override
+    for (const team of activeTeams) {
+      const ovrs = (overridesByDate[iso] || []).filter((o) => o.team_id === team.id);
+      for (const ovr of ovrs) {
+        if (ovr.member_in) {
+          const targetTeam = activeTeams.find((t) =>
+            getTeamMembers(t).includes(ovr.member_in)
+          );
+          if (targetTeam && teamStatuses[targetTeam.id]?.member_statuses) {
+            const dutyActiveStatus =
+              weekday === 0
+                ? "plantao_domingo"
+                : isRealHoliday
+                ? "plantao_feriado"
+                : "troca";
+            teamStatuses[targetTeam.id].member_statuses[ovr.member_in] =
+              dutyActiveStatus;
+          }
+        }
+      }
     }
 
     // Resolve pill display labels for the calendar cell
