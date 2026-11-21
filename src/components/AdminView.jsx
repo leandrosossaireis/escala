@@ -1995,7 +1995,7 @@ export default function AdminView({
 
             <form
               onSubmit={handleSavePointOverride}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2.5 items-end mb-4 p-3.5 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6]"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-2.5 items-end mb-4 p-3.5 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6]"
             >
               <div>
                 <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
@@ -2104,7 +2104,7 @@ export default function AdminView({
               </div>
               <div>
                 <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
-                  Nome exibido / Obs.
+                  Nome exibido
                 </label>
                 <input
                   type="text"
@@ -2116,6 +2116,23 @@ export default function AdminView({
                     })
                   }
                   placeholder="Automático"
+                  className="w-full h-10 px-2.5 rounded-xl border border-[#E5E4DF] bg-white text-[13px]"
+                />
+              </div>
+              <div>
+                <label className="block text-[11.5px] font-medium text-[#42474F] mb-1">
+                  Anotação / Motivo
+                </label>
+                <input
+                  type="text"
+                  value={pointOverrideForm.note}
+                  onChange={(e) =>
+                    setPointOverrideForm({
+                      ...pointOverrideForm,
+                      note: e.target.value,
+                    })
+                  }
+                  placeholder="Ex: Veio a pedido do Guto"
                   className="w-full h-10 px-2.5 rounded-xl border border-[#E5E4DF] bg-white text-[13px]"
                 />
               </div>

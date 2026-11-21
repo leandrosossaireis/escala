@@ -148,6 +148,16 @@ export const INITIAL_OVERRIDES = [
     member_in: "Lucas",
     note: "Troca de plantão de domingo (Lucas cobriu Facão)",
   },
+  {
+    id: "ovr-nov-21-welliton-tilu",
+    date: "2026-11-21",
+    team_id: "6ae3ae28910b0403b224d7a7",
+    member: "Welliton",
+    member_in: "Tilú",
+    status: "ferias",
+    custom_name: "Igor / Tilú",
+    note: "Tilú veio trabalhar a pedido do Guto (seria sua folga) para fazer dupla com o Igor",
+  },
 ];
 
 export const INITIAL_ABSENCES = [
@@ -732,23 +742,71 @@ export function buildCalendar({
       };
     }
 
-    // 2. Also check if any team override on this day specifies an external member_in who wasn't in their own team's override
+    // 2. Also check if any team override or absence on this day specifies an external substitute (member_in or substitute_member)
+    // and update that substitute's own team card so it clearly shows they worked + an automatic explanatory note!
     for (const team of activeTeams) {
-      const ovrs = (overridesByDate[iso] || []).filter((o) => o.team_id === team.id);
+      const ovrs = (overridesByDate[iso] || []).filter(
+        (o) => o.team_id === team.id
+      );
       for (const ovr of ovrs) {
         if (ovr.member_in) {
           const targetTeam = activeTeams.find((t) =>
             getTeamMembers(t).includes(ovr.member_in)
           );
           if (targetTeam && teamStatuses[targetTeam.id]?.member_statuses) {
+            const subPrevBase = teamStatuses[targetTeam.id].base_status;
             const dutyActiveStatus =
               weekday === 0
                 ? "plantao_domingo"
                 : isRealHoliday
                 ? "plantao_feriado"
-                : "troca";
+                : "trabalha";
             teamStatuses[targetTeam.id].member_statuses[ovr.member_in] =
               dutyActiveStatus;
+
+            if (targetTeam.id !== team.id) {
+              if (teamStatuses[targetTeam.id].status === "folga") {
+                teamStatuses[targetTeam.id].status = "alteracao";
+              }
+              const outPerson = ovr.member || ovr.member_out || team.name;
+              const defaultSubNote = `${ovr.member_in} trabalhou cobrindo ${outPerson} (equipe ${team.name})${
+                subPrevBase === "folga" ? " em seu dia de folga" : ""
+              }`;
+              teamStatuses[targetTeam.id].note =
+                ovr.note || teamStatuses[targetTeam.id].note || defaultSubNote;
+            }
+          }
+        }
+      }
+
+      const dayAbsences = findAbsences(team.id, iso);
+      for (const abs of dayAbsences) {
+        if (abs.substitute_member) {
+          const targetTeam = activeTeams.find((t) =>
+            getTeamMembers(t).includes(abs.substitute_member)
+          );
+          if (targetTeam && teamStatuses[targetTeam.id]?.member_statuses) {
+            const subPrevBase = teamStatuses[targetTeam.id].base_status;
+            const dutyActiveStatus =
+              weekday === 0
+                ? "plantao_domingo"
+                : isRealHoliday
+                ? "plantao_feriado"
+                : "trabalha";
+            teamStatuses[targetTeam.id].member_statuses[abs.substitute_member] =
+              dutyActiveStatus;
+
+            if (targetTeam.id !== team.id) {
+              if (teamStatuses[targetTeam.id].status === "folga") {
+                teamStatuses[targetTeam.id].status = "alteracao";
+              }
+              const outPerson = abs.member || team.name;
+              const defaultSubNote = `${abs.substitute_member} trabalhou cobrindo férias/ausência de ${outPerson}${
+                subPrevBase === "folga" ? " em seu dia de folga" : ""
+              }`;
+              teamStatuses[targetTeam.id].note =
+                abs.note || teamStatuses[targetTeam.id].note || defaultSubNote;
+            }
           }
         }
       }

@@ -1917,6 +1917,13 @@ export default function PublicCalendarView({
                                 })}
                               </div>
                             )}
+
+                            {/* Explanatory Note / Observation (e.g. "Tilú veio a pedido do Guto, pois seria sua Folga") */}
+                            {entry?.note && (
+                              <div className="pt-1 text-[11px] text-[#42474F] italic leading-snug">
+                                📌 {entry.note}
+                              </div>
+                            )}
                           </div>
                         );
                       })}

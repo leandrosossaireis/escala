@@ -265,6 +265,16 @@
       "member_out": "Facão",
       "member_in": "Lucas",
       "note": "Troca de plantão de domingo (Lucas cobriu Facão)"
+    },
+    {
+      "id": "ovr-nov-21-welliton-tilu",
+      "date": "2026-11-21",
+      "team_id": "6ae3ae28910b0403b224d7a7",
+      "member": "Welliton",
+      "member_in": "Tilú",
+      "status": "ferias",
+      "custom_name": "Igor / Tilú",
+      "note": "Tilú veio trabalhar a pedido do Guto (seria sua folga) para fazer dupla com o Igor"
     }
   ],
   "absences": [
