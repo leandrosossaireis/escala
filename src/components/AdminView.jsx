@@ -1769,31 +1769,9 @@ export default function AdminView({
 
   function handleExportCsv(includeValues = false) {
     const lines = [];
-    lines.push("RESUMO POR EQUIPE;" + reportPeriodInfo.title);
     lines.push(
-      "Equipe;Tipo;Grupo;Trabalha;Folga;Plantao Domingo;Plantao Feriado;Troca;Feriado;Ferias;Ausencia;Total Trabalhado"
+      "RELATORIO INDIVIDUAL POR FUNCIONARIO;" + reportPeriodInfo.title
     );
-    for (const r of filteredTeamRows) {
-      lines.push(
-        [
-          r.team.name,
-          r.team.kind,
-          r.team.group,
-          r.trabalha,
-          r.folga,
-          r.plantao_domingo,
-          r.plantao_feriado,
-          r.troca,
-          r.feriado,
-          r.ferias,
-          r.ausencia,
-          r.total_trabalhado,
-        ].join(";")
-      );
-    }
-
-    lines.push("");
-    lines.push("RELATORIO INDIVIDUAL POR FUNCIONARIO");
     if (includeValues) {
       lines.push(
         "Funcionario;Equipe;Grupo;Normais;Plantao Dom.;Plantao Fer.;Dia Adicional;Ferias/Aus.;Folgas;Historico e Descricoes (Ferias, Trocas, Adicionais e Obs.);Total Trabalhado;Valor Estimado (R$)"
@@ -3599,13 +3577,8 @@ export default function AdminView({
               badge: `${rotation5x2Report.weeks.length} sem.`,
             },
             {
-              id: "equipes",
-              label: "4. Resumo por Equipe",
-              badge: filteredTeamRows.length,
-            },
-            {
               id: "ocorrencias",
-              label: "5. Diário de Ocorrências",
+              label: "4. Diário de Ocorrências",
               badge: allOccurrencesCount,
             },
             {
@@ -4259,78 +4232,6 @@ export default function AdminView({
                   </tbody>
                 </table>
               </div>
-            </div>
-          </div>
-              )}
-
-              {/* Card 1: Resumo do período por Equipe */}
-              {(reportSubView === "equipes" || reportSubView === "todos") && (
-                <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
-            <div className="pb-3 mb-3 border-b border-[#EBEBE6]">
-              <h2 className="font-heading text-[18px] font-bold text-[#14181F]">
-                Resumo por Equipe — {reportPeriodInfo.title} (
-                {filteredTeamRows.length})
-              </h2>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-[13px]">
-                <thead>
-                  <tr className="border-b border-[#EBEBE6] text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8A8F98]">
-                    <th className="py-2.5 px-2.5">Equipe</th>
-                    <th className="py-2.5 px-2.5 text-center">Trabalha</th>
-                    <th className="py-2.5 px-2.5 text-center">Folga</th>
-                    <th className="py-2.5 px-2.5 text-center">Plantão dom.</th>
-                    <th className="py-2.5 px-2.5 text-center">Plantão fer.</th>
-                    <th className="py-2.5 px-2.5 text-center">Troca</th>
-                    <th className="py-2.5 px-2.5 text-center">Feriado</th>
-                    <th className="py-2.5 px-2.5 text-center">Férias</th>
-                    <th className="py-2.5 px-2.5 text-center">Ausência</th>
-                    <th className="py-2.5 px-2.5 text-right">
-                      Total Trabalhado
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#F2F1EC]">
-                  {filteredTeamRows.map((r) => (
-                    <tr key={r.team.id} className="hover:bg-[#FBFAF7]">
-                      <td className="py-2.5 px-2.5 font-semibold text-[#14181F]">
-                        {r.team.name}{" "}
-                        <span className="text-[11px] font-normal text-[#8A8F98]">
-                          ({r.team.group})
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-2.5 text-center tabular-nums">
-                        {r.trabalha}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-center tabular-nums">
-                        {r.folga}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-center tabular-nums font-semibold text-[#C2410C]">
-                        {r.plantao_domingo}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-center tabular-nums font-semibold text-[#6D28D9]">
-                        {r.plantao_feriado}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-center tabular-nums font-semibold text-[#1D4ED8]">
-                        {r.troca}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-center tabular-nums">
-                        {r.feriado}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-center tabular-nums">
-                        {r.ferias}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-center tabular-nums">
-                        {r.ausencia}
-                      </td>
-                      <td className="py-2.5 px-2.5 text-right tabular-nums font-bold text-[#065F46]">
-                        {r.total_trabalhado} dias
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </div>
               )}
