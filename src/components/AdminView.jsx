@@ -1110,9 +1110,162 @@ export default function AdminView({
   }
 
   // ===========================================================================
-  // Handlers: Tab 7 (Export CSV / Backup JSON)
+  // Handlers: Tab 7 (Export Excel / CSV / Backup JSON)
   // ===========================================================================
-  function handleExportCsv() {
+  function handleExportEmployeeExcelNoValues() {
+    // Build a styled Excel (.xls) workbook with the exact visual layout & colors of the Relatório Individual por Funcionário table, WITHOUT financial values (R$)
+    const escapeHtml = (str) =>
+      String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+
+    const rowsHtml = filteredEmployeeReport
+      .map((emp) => {
+        const cleanBadge = (b) => String(b || "").replace(/\s*\(\+R\$\)/g, "");
+        const occHtml =
+          emp.occurrences && emp.occurrences.length > 0
+            ? emp.occurrences
+                .map((occ) => {
+                  const dt = formatShortDate(occ.date).slice(0, 5);
+                  const bLabel = cleanBadge(occ.badge);
+                  let bBg = "#EBEBE6";
+                  let bFg = "#42474F";
+                  if (occ.color === "domingo") {
+                    bBg = "#FFEDD5";
+                    bFg = "#C2410C";
+                  } else if (occ.color === "feriado") {
+                    bBg = "#EDE9FE";
+                    bFg = "#6D28D9";
+                  } else if (occ.color === "adicional") {
+                    bBg = "#DBEAFE";
+                    bFg = "#1D4ED8";
+                  } else if (
+                    occ.color === "ferias" ||
+                    occ.color === "ausencia"
+                  ) {
+                    bBg = "#FEF08A";
+                    bFg = "#854D0E";
+                  }
+                  return `<div style="margin-bottom:4px; padding:4px 6px; background:#FBFAF7; border:1px solid #EBEBE6;">
+                    <b style="font-family:Consolas,monospace; color:#14181F;">${escapeHtml(
+                      dt
+                    )}</b>
+                    <span style="background:${bBg}; color:${bFg}; font-weight:bold; padding:1px 5px; font-size:10px;">[${escapeHtml(
+                    bLabel
+                  )}]</span>
+                    <span style="color:#42474F;"> ${escapeHtml(
+                      occ.description
+                    )}</span>
+                  </div>`;
+                })
+                .join("<br style='mso-data-placement:same-cell;' />")
+            : `<span style="color:#A3A8B1;">Sem ocorrências extras no período</span>`;
+
+        return `<tr>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; vertical-align:top;">
+            <div style="font-weight:bold; color:#14181F; font-size:13px;">${escapeHtml(
+              emp.name
+            )}</div>
+            <div style="color:#8A8F98; font-size:11px;">${escapeHtml(
+              emp.teamName
+            )} (Grp ${escapeHtml(emp.group)})</div>
+          </td>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center; vertical-align:top; font-weight:600; color:#14181F;">
+            ${emp.diasNormais}
+          </td>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center; vertical-align:top; font-weight:bold; color:${
+            emp.plantoesDomingo > 0 ? "#C2410C" : "#A3A8B1"
+          }; background:${emp.plantoesDomingo > 0 ? "#FFF7ED" : "#FFFFFF"};">
+            ${emp.plantoesDomingo}
+          </td>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center; vertical-align:top; font-weight:bold; color:${
+            emp.plantoesFeriado > 0 ? "#6D28D9" : "#A3A8B1"
+          }; background:${emp.plantoesFeriado > 0 ? "#F5F3FF" : "#FFFFFF"};">
+            ${emp.plantoesFeriado}
+          </td>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center; vertical-align:top; font-weight:bold; color:${
+            emp.diasAdicionais > 0 ? "#1D4ED8" : "#A3A8B1"
+          }; background:${emp.diasAdicionais > 0 ? "#EFF6FF" : "#FFFFFF"};">
+            ${emp.diasAdicionais > 0 ? `+${emp.diasAdicionais}` : "0"}
+          </td>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center; vertical-align:top; font-weight:bold; color:${
+            emp.feriasAusencias > 0 ? "#854D0E" : "#A3A8B1"
+          }; background:${emp.feriasAusencias > 0 ? "#FEFCE8" : "#FFFFFF"};">
+            ${emp.feriasAusencias > 0 ? `${emp.feriasAusencias}d` : "0"}
+          </td>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center; vertical-align:top; color:#6B7280;">
+            ${emp.folgas}
+          </td>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; vertical-align:top; font-size:11.5px; width:420px;">
+            ${occHtml}
+          </td>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:right; vertical-align:top; font-weight:bold; color:#065F46; background:#ECFDF5;">
+            ${emp.totalTrabalhado} dias
+          </td>
+        </tr>`;
+      })
+      .join("");
+
+    const excelHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="UTF-8" />
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>Relatorio Funcionarios</x:Name>
+                <x:WorksheetOptions>
+                  <x:DisplayGridlines/>
+                </x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+      </head>
+      <body style="font-family: Inter, Calibri, Arial, sans-serif;">
+        <table border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse; width:100%;">
+          <tr>
+            <td colspan="9" style="padding:12px 8px; font-size:16px; font-weight:bold; color:#14181F; background:#FBFAF7; border-bottom:2px solid #14181F;">
+              Relatório Individual por Funcionário — ${escapeHtml(
+                reportPeriodInfo.title
+              )} (${filteredEmployeeReport.length})
+            </td>
+          </tr>
+          <tr style="background:#F3F2ED; color:#8A8F98; font-size:10.5px; font-weight:bold; text-transform:uppercase;">
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:left;">FUNCIONÁRIO</th>
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center;">NORMAIS</th>
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center;">PLANTÃO DOM.</th>
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center;">PLANTÃO FER.</th>
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center;">DIA ADICIONAL</th>
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center;">FÉRIAS/AUS.</th>
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center;">FOLGAS</th>
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:left;">HISTÓRICO E DESCRIÇÕES (FÉRIAS, TROCAS, ADICIONAIS E OBS.)</th>
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:right;">TOTAL TRABALHADO</th>
+          </tr>
+          ${rowsHtml}
+        </table>
+      </body>
+    </html>`;
+
+    const blob = new Blob(["\uFEFF" + excelHtml], {
+      type: "application/vnd.ms-excel;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `relatorio-funcionarios-${reportPeriodInfo.fileSlug}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+    notify?.(
+      `Excel (sem valores R$) exportado: relatorio-funcionarios-${reportPeriodInfo.fileSlug}.xls!`
+    );
+  }
+
+  function handleExportCsv(includeValues = false) {
     const lines = [];
     lines.push("RESUMO POR EQUIPE;" + reportPeriodInfo.title);
     lines.push(
@@ -1138,10 +1291,17 @@ export default function AdminView({
     }
 
     lines.push("");
-    lines.push("DIAS TRABALHADOS E OCORRENCIAS POR FUNCIONARIO");
-    lines.push(
-      "Funcionario;Equipe;Setor;Dias Normais;Plantao Dom;Plantao Fer;Dia Adicional / Cobertura;Ferias;Ausencias;Folgas;Total Dias Trabalhados;Valor Estimado (R$);Detalhamento (Ferias, Trocas, Coberturas e Anotacoes)"
-    );
+    lines.push("RELATORIO INDIVIDUAL POR FUNCIONARIO");
+    if (includeValues) {
+      lines.push(
+        "Funcionario;Equipe;Grupo;Normais;Plantao Dom.;Plantao Fer.;Dia Adicional;Ferias/Aus.;Folgas;Historico e Descricoes (Ferias, Trocas, Adicionais e Obs.);Total Trabalhado;Valor Estimado (R$)"
+      );
+    } else {
+      lines.push(
+        "Funcionario;Equipe;Grupo;Normais;Plantao Dom.;Plantao Fer.;Dia Adicional;Ferias/Aus.;Folgas;Historico e Descricoes (Ferias, Trocas, Adicionais e Obs.);Total Trabalhado"
+      );
+    }
+
     const rNorm = Number(appState.settings.rate_dia_normal ?? 0);
     const rDom = Number(appState.settings.rate_plantao_domingo ?? 150);
     const rFer = Number(appState.settings.rate_plantao_feriado ?? 180);
@@ -1156,26 +1316,31 @@ export default function AdminView({
       const detailsText = (emp.occurrences || [])
         .map(
           (o) =>
-            `${formatShortDate(o.date)} [${o.badge}]: ${o.description || ""}`
+            `${formatShortDate(o.date).slice(0, 5)} [${String(
+              o.badge || ""
+            ).replace(/\s*\(\+R\$\)/g, "")}]: ${o.description || ""}`
         )
         .join(" | ");
-      lines.push(
-        [
-          emp.name,
-          emp.teamName,
-          emp.kind,
-          emp.diasNormais,
-          emp.plantoesDomingo,
-          emp.plantoesFeriado,
-          emp.diasAdicionais,
-          emp.feriasCount,
-          emp.ausenciasCount,
-          emp.folgas,
-          emp.totalTrabalhado,
-          totalFin.toFixed(2).replace(".", ","),
-          `"${detailsText.replace(/"/g, '""')}"`,
-        ].join(";")
-      );
+
+      const rowCols = [
+        emp.name,
+        emp.teamName,
+        `Grp ${emp.group}`,
+        emp.diasNormais,
+        emp.plantoesDomingo,
+        emp.plantoesFeriado,
+        emp.diasAdicionais > 0 ? `+${emp.diasAdicionais}` : 0,
+        emp.feriasAusencias,
+        emp.folgas,
+        `"${detailsText.replace(/"/g, '""')}"`,
+        `${emp.totalTrabalhado} dias`,
+      ];
+
+      if (includeValues) {
+        rowCols.push(totalFin.toFixed(2).replace(".", ","));
+      }
+
+      lines.push(rowCols.join(";"));
     }
 
     lines.push("");
@@ -2984,11 +3149,19 @@ export default function AdminView({
 
                 <button
                   type="button"
-                  onClick={handleExportCsv}
+                  onClick={handleExportEmployeeExcelNoValues}
+                  className="h-9 px-4 rounded-full bg-[#10B981] text-white text-[12.5px] font-semibold hover:bg-[#059669] transition inline-flex items-center gap-1.5 shadow-sm"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Baixar Excel (Sem Valores R$)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExportCsv(false)}
                   className="h-9 px-4 rounded-full bg-[#14181F] text-white text-[12.5px] font-semibold hover:bg-[#272D38] transition inline-flex items-center gap-1.5"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Exportar CSV (Excel)</span>
+                  <span>Exportar CSV</span>
                 </button>
                 <button
                   type="button"
@@ -3199,14 +3372,24 @@ export default function AdminView({
           <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
               <div>
-                <h2 className="font-heading text-[17px] font-bold text-[#14181F]">
-                  Relatório Individual por Funcionário —{" "}
-                  {reportPeriodInfo.title} ({filteredEmployeeReport.length})
-                </h2>
-                <p className="text-[12.5px] text-[#6B7280]">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h2 className="font-heading text-[17px] font-bold text-[#14181F]">
+                    Relatório Individual por Funcionário —{" "}
+                    {reportPeriodInfo.title} ({filteredEmployeeReport.length})
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={handleExportEmployeeExcelNoValues}
+                    className="h-8 px-3.5 rounded-full bg-[#10B981]/15 text-[#065F46] border border-[#10B981]/30 text-[12px] font-semibold hover:bg-[#10B981]/25 transition inline-flex items-center gap-1.5 no-print"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Baixar Excel (Sem Valores R$)</span>
+                  </button>
+                </div>
+                <p className="text-[12.5px] text-[#6B7280] mt-0.5">
                   Inclui contagem de dias normais, plantões,{" "}
-                  <strong>dias adicionais trabalhados na folga</strong> (ex:
-                  Tilú cobrindo a pedido do Guto = R$ 150) e todas as anotações.
+                  <strong>dias adicionais trabalhados na folga</strong> e todas
+                  as anotações (o arquivo Excel baixado não exibe valores em R$).
                 </p>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 no-print">
