@@ -1265,6 +1265,196 @@ export default function AdminView({
     );
   }
 
+  function handleExportDutiesAndHolidaysExcel() {
+    const escapeHtml = (str) =>
+      String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+
+    // 1. Employees who worked at least 1 Sunday Duty, Holiday Duty, or Additional Off-day Coverage
+    const dutyEmployees = filteredEmployeeReport.filter(
+      (emp) =>
+        emp.plantoesDomingo + emp.plantoesFeriado + emp.diasAdicionais > 0
+    );
+
+    const empRowsHtml = dutyEmployees
+      .map((emp) => {
+        const cleanBadge = (b) => String(b || "").replace(/\s*\(\+R\$\)/g, "");
+        const dutyOccurrences = (emp.occurrences || []).filter((occ) =>
+          ["domingo", "feriado", "adicional"].includes(occ.color)
+        );
+        const occHtml =
+          dutyOccurrences.length > 0
+            ? dutyOccurrences
+                .map((occ) => {
+                  const dt = formatShortDate(occ.date).slice(0, 5);
+                  const bLabel = cleanBadge(occ.badge);
+                  let bBg = "#EBEBE6";
+                  let bFg = "#42474F";
+                  if (occ.color === "domingo") {
+                    bBg = "#FFEDD5";
+                    bFg = "#C2410C";
+                  } else if (occ.color === "feriado") {
+                    bBg = "#EDE9FE";
+                    bFg = "#6D28D9";
+                  } else if (occ.color === "adicional") {
+                    bBg = "#DBEAFE";
+                    bFg = "#1D4ED8";
+                  }
+                  return `<div style="margin-bottom:4px; padding:4px 6px; background:#FBFAF7; border:1px solid #EBEBE6;">
+                    <b style="font-family:Consolas,monospace; color:#14181F;">${escapeHtml(
+                      dt
+                    )}</b>
+                    <span style="background:${bBg}; color:${bFg}; font-weight:bold; padding:1px 5px; font-size:10px;">[${escapeHtml(
+                    bLabel
+                  )}]</span>
+                    <span style="color:#42474F;"> ${escapeHtml(
+                      occ.description
+                    )}</span>
+                  </div>`;
+                })
+                .join("<br style='mso-data-placement:same-cell;' />")
+            : `<span style="color:#A3A8B1;">-</span>`;
+
+        const totalExtras =
+          emp.plantoesDomingo + emp.plantoesFeriado + emp.diasAdicionais;
+
+        return `<tr>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; vertical-align:top;">
+            <div style="font-weight:bold; color:#14181F; font-size:13px;">${escapeHtml(
+              emp.name
+            )}</div>
+            <div style="color:#8A8F98; font-size:11px;">${escapeHtml(
+              emp.teamName
+            )} (Grp ${escapeHtml(emp.group)})</div>
+          </td>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center; vertical-align:top; font-weight:bold; color:${
+            emp.plantoesDomingo > 0 ? "#C2410C" : "#A3A8B1"
+          }; background:${emp.plantoesDomingo > 0 ? "#FFF7ED" : "#FFFFFF"};">
+            ${emp.plantoesDomingo}
+          </td>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center; vertical-align:top; font-weight:bold; color:${
+            emp.plantoesFeriado > 0 ? "#6D28D9" : "#A3A8B1"
+          }; background:${emp.plantoesFeriado > 0 ? "#F5F3FF" : "#FFFFFF"};">
+            ${emp.plantoesFeriado}
+          </td>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center; vertical-align:top; font-weight:bold; color:${
+            emp.diasAdicionais > 0 ? "#1D4ED8" : "#A3A8B1"
+          }; background:${emp.diasAdicionais > 0 ? "#EFF6FF" : "#FFFFFF"};">
+            ${emp.diasAdicionais > 0 ? `+${emp.diasAdicionais}` : "0"}
+          </td>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; vertical-align:top; font-size:11.5px; width:440px;">
+            ${occHtml}
+          </td>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:right; vertical-align:top; font-weight:bold; color:#065F46; background:#ECFDF5;">
+            ${totalExtras} ${totalExtras === 1 ? "plantão" : "plantões"}
+          </td>
+        </tr>`;
+      })
+      .join("");
+
+    // 2. Chronological list of Sunday & Holiday duties in the period
+    const dutiesRowsHtml = filteredDuties
+      .map((d) => {
+        const isHoliday = d.kind.toLowerCase().includes("feriado") || d.kind.includes("(");
+        const isAtend = d.kind.toLowerCase().includes("atendimento");
+        const badgeBg = isAtend
+          ? "#EDE9FE"
+          : isHoliday
+          ? "#F5F3FF"
+          : "#FFF7ED";
+        const badgeFg = isAtend
+          ? "#6D28D9"
+          : isHoliday
+          ? "#6D28D9"
+          : "#C2410C";
+
+        return `<tr>
+          <td style="padding:8px; border-bottom:1px solid #EBEBE6; font-family:Consolas,monospace; font-weight:bold; color:#14181F;">
+            ${escapeHtml(formatShortDate(d.date))}
+          </td>
+          <td style="padding:8px; border-bottom:1px solid #EBEBE6;">
+            <span style="background:${badgeBg}; color:${badgeFg}; font-weight:bold; padding:2px 6px; font-size:11px;">
+              ${escapeHtml(d.kind)}
+            </span>
+          </td>
+          <td colspan="4" style="padding:8px; border-bottom:1px solid #EBEBE6; font-weight:bold; color:#14181F;">
+            ${escapeHtml(d.label || "")}
+          </td>
+        </tr>`;
+      })
+      .join("");
+
+    const excelHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="UTF-8" />
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>Plantoes e Feriados</x:Name>
+                <x:WorksheetOptions>
+                  <x:DisplayGridlines/>
+                </x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+      </head>
+      <body style="font-family: Inter, Calibri, Arial, sans-serif;">
+        <table border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse; width:100%;">
+          <tr>
+            <td colspan="6" style="padding:12px 8px; font-size:16px; font-weight:bold; color:#14181F; background:#FBFAF7; border-bottom:2px solid #14181F;">
+              Relatório Exclusivo de Plantões (Domingos, Feriados e Dias Adicionais) — ${escapeHtml(
+                reportPeriodInfo.title
+              )}
+            </td>
+          </tr>
+          <tr style="background:#F3F2ED; color:#8A8F98; font-size:10.5px; font-weight:bold; text-transform:uppercase;">
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:left;">FUNCIONÁRIO</th>
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center;">PLANTÃO DOMINGO</th>
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center;">PLANTÃO FERIADO</th>
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:center;">DIA ADICIONAL</th>
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:left;">DATAS E DESCRIÇÕES DOS PLANTÕES / TROCAS</th>
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:right;">TOTAL DE PLANTÕES</th>
+          </tr>
+          ${empRowsHtml}
+          <tr><td colspan="6" style="padding:14px;"></td></tr>
+          <tr>
+            <td colspan="6" style="padding:10px 8px; font-size:14px; font-weight:bold; color:#14181F; background:#FBFAF7; border-bottom:2px solid #14181F;">
+              Cronograma de Plantões de Domingos e Feriados (${
+                filteredDuties.length
+              })
+            </td>
+          </tr>
+          <tr style="background:#F3F2ED; color:#8A8F98; font-size:10.5px; font-weight:bold; text-transform:uppercase;">
+            <th style="padding:8px; border-bottom:1px solid #EBEBE6; text-align:left;">DATA</th>
+            <th style="padding:8px; border-bottom:1px solid #EBEBE6; text-align:left;">TIPO DE PLANTÃO / FERIADO</th>
+            <th colspan="4" style="padding:8px; border-bottom:1px solid #EBEBE6; text-align:left;">EQUIPE / FUNCIONÁRIOS ESCALADOS</th>
+          </tr>
+          ${dutiesRowsHtml}
+        </table>
+      </body>
+    </html>`;
+
+    const blob = new Blob(["\uFEFF" + excelHtml], {
+      type: "application/vnd.ms-excel;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `plantoes-e-feriados-${reportPeriodInfo.fileSlug}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+    notify?.(
+      `Relatório de Plantões e Feriados exportado: plantoes-e-feriados-${reportPeriodInfo.fileSlug}.xls!`
+    );
+  }
+
   function handleExportCsv(includeValues = false) {
     const lines = [];
     lines.push("RESUMO POR EQUIPE;" + reportPeriodInfo.title);
@@ -3149,11 +3339,19 @@ export default function AdminView({
 
                 <button
                   type="button"
+                  onClick={handleExportDutiesAndHolidaysExcel}
+                  className="h-9 px-4 rounded-full bg-[#8B5CF6] text-white text-[12.5px] font-semibold hover:bg-[#7C3AED] transition inline-flex items-center gap-1.5 shadow-sm"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Excel Só Plantões e Feriados</span>
+                </button>
+                <button
+                  type="button"
                   onClick={handleExportEmployeeExcelNoValues}
                   className="h-9 px-4 rounded-full bg-[#10B981] text-white text-[12.5px] font-semibold hover:bg-[#059669] transition inline-flex items-center gap-1.5 shadow-sm"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Baixar Excel (Sem Valores R$)</span>
+                  <span>Excel Geral (Sem R$)</span>
                 </button>
                 <button
                   type="button"
@@ -3379,11 +3577,19 @@ export default function AdminView({
                   </h2>
                   <button
                     type="button"
+                    onClick={handleExportDutiesAndHolidaysExcel}
+                    className="h-8 px-3.5 rounded-full bg-[#8B5CF6]/15 text-[#6D28D9] border border-[#8B5CF6]/30 text-[12px] font-semibold hover:bg-[#8B5CF6]/25 transition inline-flex items-center gap-1.5 no-print"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Baixar Só Plantões e Feriados (.xls)</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={handleExportEmployeeExcelNoValues}
                     className="h-8 px-3.5 rounded-full bg-[#10B981]/15 text-[#065F46] border border-[#10B981]/30 text-[12px] font-semibold hover:bg-[#10B981]/25 transition inline-flex items-center gap-1.5 no-print"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>Baixar Excel (Sem Valores R$)</span>
+                    <span>Baixar Excel Geral (Sem R$)</span>
                   </button>
                 </div>
                 <p className="text-[12.5px] text-[#6B7280] mt-0.5">
@@ -3622,6 +3828,153 @@ export default function AdminView({
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Card 2B: Relatório Exclusivo de Plantões (Domingos, Feriados e Dias Adicionais) */}
+          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
+              <div>
+                <h2 className="font-heading text-[17px] font-bold text-[#14181F]">
+                  Resumo Exclusivo de Plantões e Feriados por Funcionário —{" "}
+                  {reportPeriodInfo.title}
+                </h2>
+                <p className="text-[12.5px] text-[#6B7280]">
+                  Exibe apenas quem realizou plantão de domingo, plantão de
+                  feriado ou dia adicional de cobertura no período (sem valores
+                  financeiros).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleExportDutiesAndHolidaysExcel}
+                className="h-9 px-4 rounded-full bg-[#8B5CF6] text-white text-[12.5px] font-semibold hover:bg-[#7C3AED] transition inline-flex items-center gap-1.5 shadow-sm no-print"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Baixar Excel Só Plantões e Feriados</span>
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-[13px]">
+                <thead>
+                  <tr className="border-b border-[#EBEBE6] text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8A8F98]">
+                    <th className="py-2.5 px-2.5">Funcionário</th>
+                    <th className="py-2.5 px-2.5 text-center">
+                      Plantão Domingo
+                    </th>
+                    <th className="py-2.5 px-2.5 text-center">
+                      Plantão Feriado
+                    </th>
+                    <th className="py-2.5 px-2.5 text-center">Dia Adicional</th>
+                    <th className="py-2.5 px-2.5">
+                      Datas e Descrições dos Plantões / Feriados / Trocas
+                    </th>
+                    <th className="py-2.5 px-2.5 text-right">
+                      Total de Plantões
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F2F1EC]">
+                  {filteredEmployeeReport
+                    .filter(
+                      (emp) =>
+                        emp.plantoesDomingo +
+                          emp.plantoesFeriado +
+                          emp.diasAdicionais >
+                        0
+                    )
+                    .map((emp) => {
+                      const dutyOccs = (emp.occurrences || []).filter((occ) =>
+                        ["domingo", "feriado", "adicional"].includes(occ.color)
+                      );
+                      const totalExtras =
+                        emp.plantoesDomingo +
+                        emp.plantoesFeriado +
+                        emp.diasAdicionais;
+
+                      return (
+                        <tr
+                          key={`duty-${emp.name}`}
+                          className="hover:bg-[#FBFAF7] align-top"
+                        >
+                          <td className="py-3 px-2.5">
+                            <div className="font-semibold text-[#14181F]">
+                              {emp.name}
+                            </div>
+                            <div className="text-[11px] text-[#8A8F98]">
+                              {emp.teamName} (Grp {emp.group})
+                            </div>
+                          </td>
+                          <td className="py-3 px-2.5 text-center tabular-nums">
+                            {emp.plantoesDomingo > 0 ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-[#F97316]/15 text-[#C2410C] font-bold">
+                                {emp.plantoesDomingo}
+                              </span>
+                            ) : (
+                              <span className="text-[#A3A8B1]">0</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-2.5 text-center tabular-nums">
+                            {emp.plantoesFeriado > 0 ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-[#8B5CF6]/15 text-[#6D28D9] font-bold">
+                                {emp.plantoesFeriado}
+                              </span>
+                            ) : (
+                              <span className="text-[#A3A8B1]">0</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-2.5 text-center tabular-nums">
+                            {emp.diasAdicionais > 0 ? (
+                              <span className="px-2.5 py-0.5 rounded-full bg-[#3B82F6]/15 text-[#1D4ED8] font-bold">
+                                +{emp.diasAdicionais}
+                              </span>
+                            ) : (
+                              <span className="text-[#A3A8B1]">0</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-2.5 min-w-[270px] max-w-[440px]">
+                            <div className="space-y-1.5">
+                              {dutyOccs.map((occ, idx) => (
+                                <div
+                                  key={`${occ.date}-${idx}`}
+                                  className="text-[11.5px] leading-snug p-1.5 rounded-lg bg-[#FBFAF7] border border-[#EBEBE6] flex flex-wrap items-center gap-1.5"
+                                >
+                                  <span className="font-mono font-semibold text-[#14181F] tabular-nums">
+                                    {formatShortDate(occ.date).slice(0, 5)}
+                                  </span>
+                                  <span
+                                    className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                      occ.color === "domingo"
+                                        ? "bg-[#F97316]/15 text-[#C2410C]"
+                                        : occ.color === "feriado"
+                                        ? "bg-[#8B5CF6]/15 text-[#6D28D9]"
+                                        : "bg-[#3B82F6]/15 text-[#1D4ED8]"
+                                    }`}
+                                  >
+                                    {String(occ.badge || "").replace(
+                                      /\s*\(\+R\$\)/g,
+                                      ""
+                                    )}
+                                  </span>
+                                  <span className="text-[#42474F]">
+                                    {occ.description}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="py-3 px-2.5 text-right tabular-nums font-bold text-[#065F46] whitespace-nowrap">
+                            <span className="px-3 py-1 rounded-full bg-[#10B981]/15 text-[#065F46]">
+                              {totalExtras}{" "}
+                              {totalExtras === 1 ? "plantão" : "plantões"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>
