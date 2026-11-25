@@ -3814,22 +3814,18 @@ export default function AdminView({
             )}
           </div>
 
-          {/* Card 0: Relatório da Escala 5x2 — Rodízio Semanal das Equipes Grupo A e Grupo B */}
+          {/* Card 0: Relatório da Escala 5x2 — Rodízio Semanal das Equipes Grupo A e Grupo B (Table layout identical to Excel) */}
           <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
             <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#3B82F6]">
-                  REGIME DE RODÍZIO 5X2 · GRUPOS A E B
-                </div>
-                <h2 className="font-heading text-[18px] font-bold text-[#14181F] mt-0.5">
-                  Relatório da Escala 5x2 (Segunda a Sexta vs Terça a Sábado) —{" "}
-                  {reportPeriodInfo.title}
+                <h2 className="font-heading text-[18px] font-bold text-[#14181F]">
+                  Relatório da Escala 5x2 (Rodízio Grupos A e B: Segunda–Sexta vs
+                  Terça–Sábado) — {reportPeriodInfo.title}
                 </h2>
-                <p className="text-[12.5px] text-[#6B7280]">
-                  Mostra semana a semana qual grupo (A ou B) trabalhou de{" "}
-                  <strong>Segunda a Sexta</strong> (folga Sáb/Dom) e qual
-                  trabalhou de <strong>Terça a Sábado</strong> (folga Dom/Seg),
-                  além do total de dias 5x2 por equipe.
+                <p className="text-[12.5px] text-[#6B7280] mt-0.5">
+                  Tabela semana a semana mostrando qual grupo trabalhou de
+                  Segunda a Sexta (folga Sábado e Domingo) e qual trabalhou de
+                  Terça a Sábado (folga Domingo e Segunda).
                 </p>
               </div>
               <button
@@ -3842,104 +3838,100 @@ export default function AdminView({
               </button>
             </div>
 
-            {/* Parte 1: Mapa Semana a Semana (Grupo A vs Grupo B) */}
-            <div className="mb-5">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8A8F98] mb-2.5">
-                1. RODÍZIO SEMANAL 5X2 ENTRE GRUPO A E GRUPO B (
-                {rotation5x2Report.weeks.length} SEMANAS)
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {rotation5x2Report.weeks.map((w, idx) => {
-                  const monFriTeams = activeTeams.filter(
-                    (t) => t.group === w.monFriGroup
-                  );
-                  const tueSatTeams = activeTeams.filter(
-                    (t) => t.group === w.tueSatGroup
-                  );
+            {/* Tabela 1: Semana | Turno Segunda a Sexta | Turno Terça a Sábado (Igual à planilha Excel) */}
+            <div className="overflow-x-auto mb-6">
+              <table className="w-full text-left border-collapse text-[13px]">
+                <thead>
+                  <tr className="border-b border-[#EBEBE6] bg-[#F3F2ED] text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#8A8F98]">
+                    <th className="py-3 px-3.5 w-[210px]">Semana</th>
+                    <th className="py-3 px-3.5">
+                      Turno Segunda a Sexta (Folga Sábado e Domingo)
+                    </th>
+                    <th className="py-3 px-3.5">
+                      Turno Terça a Sábado (Folga Domingo e Segunda)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EBEBE6]">
+                  {rotation5x2Report.weeks.map((w, idx) => {
+                    const monFriTeams = activeTeams.filter(
+                      (t) => t.group === w.monFriGroup
+                    );
+                    const tueSatTeams = activeTeams.filter(
+                      (t) => t.group === w.tueSatGroup
+                    );
 
-                  return (
-                    <div
-                      key={w.weekMonday}
-                      className="p-3.5 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6] flex flex-col justify-between gap-2.5"
-                    >
-                      <div className="flex items-center justify-between border-b border-[#EBEBE6] pb-2">
-                        <span className="font-heading font-bold text-[13.5px] text-[#14181F]">
-                          Semana {idx + 1}
-                        </span>
-                        <span className="font-mono text-[11.5px] font-semibold text-[#6B7280] tabular-nums">
-                          {formatShortDate(w.weekMonday).slice(0, 5)} a{" "}
-                          {formatShortDate(w.weekSaturday).slice(0, 5)}
-                        </span>
-                      </div>
+                    return (
+                      <tr key={w.weekMonday} className="align-top">
+                        <td className="py-3.5 px-3.5 bg-white">
+                          <div className="font-heading font-bold text-[14px] text-[#14181F]">
+                            Semana {idx + 1}
+                          </div>
+                          <div className="font-mono text-[12px] text-[#6B7280] mt-0.5 tabular-nums">
+                            {formatShortDate(w.weekMonday)} a{" "}
+                            {formatShortDate(w.weekSaturday)}
+                          </div>
+                        </td>
 
-                      <div className="p-2.5 rounded-xl bg-[#10B981]/10 border border-[#10B981]/25">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#065F46]">
-                            Segunda a Sexta (5x2)
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full bg-[#10B981] text-white text-[10.5px] font-bold">
-                            Grupo {w.monFriGroup}
-                          </span>
-                        </div>
-                        <div className="text-[12px] font-medium text-[#14181F] mt-1">
-                          {monFriTeams.map((t) => t.name).join(" · ")}
-                        </div>
-                        <div className="text-[10.5px] text-[#047857] mt-0.5">
-                          Folga 5x2: Sábado (
-                          {formatShortDate(w.weekSaturday).slice(0, 5)}) e
-                          Domingo ({formatShortDate(w.weekSunday).slice(0, 5)})
-                        </div>
-                      </div>
+                        <td className="py-3.5 px-3.5 bg-[#ECFDF5]/70 border-l border-[#EBEBE6]">
+                          <div className="font-heading font-bold text-[13.5px] text-[#065F46]">
+                            GRUPO {w.monFriGroup} — Segunda a Sexta
+                          </div>
+                          <div className="text-[12.5px] font-medium text-[#14181F] mt-1">
+                            {monFriTeams.map((t) => t.name).join(" · ")}
+                          </div>
+                          <div className="text-[11.5px] font-medium text-[#047857] mt-1">
+                            Folga da semana (5x2): Sábado (
+                            {formatShortDate(w.weekSaturday).slice(0, 5)}) e
+                            Domingo ({formatShortDate(w.weekSunday).slice(0, 5)}
+                            )
+                          </div>
+                        </td>
 
-                      <div className="p-2.5 rounded-xl bg-[#3B82F6]/10 border border-[#3B82F6]/25">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-[#1D4ED8]">
-                            Terça a Sábado (5x2)
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full bg-[#3B82F6] text-white text-[10.5px] font-bold">
-                            Grupo {w.tueSatGroup}
-                          </span>
-                        </div>
-                        <div className="text-[12px] font-medium text-[#14181F] mt-1">
-                          {tueSatTeams.map((t) => t.name).join(" · ")}
-                        </div>
-                        <div className="text-[10.5px] text-[#1E40AF] mt-0.5">
-                          Folga 5x2: Segunda (
-                          {formatShortDate(w.weekMonday).slice(0, 5)}) e Domingo
-                          ({formatShortDate(w.weekSunday).slice(0, 5)})
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                        <td className="py-3.5 px-3.5 bg-[#EFF6FF]/70 border-l border-[#EBEBE6]">
+                          <div className="font-heading font-bold text-[13.5px] text-[#1D4ED8]">
+                            GRUPO {w.tueSatGroup} — Terça a Sábado
+                          </div>
+                          <div className="text-[12.5px] font-medium text-[#14181F] mt-1">
+                            {tueSatTeams.map((t) => t.name).join(" · ")}
+                          </div>
+                          <div className="text-[11.5px] font-medium text-[#1E40AF] mt-1">
+                            Folga da semana (5x2): Segunda (
+                            {formatShortDate(w.weekMonday).slice(0, 5)}) e
+                            Domingo ({formatShortDate(w.weekSunday).slice(0, 5)}
+                            )
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
-            {/* Parte 2: Tabela Consolidada 5x2 por Equipe */}
+            {/* Tabela 2: Detalhamento 5x2 por Equipe (Grupo A e Grupo B) */}
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8A8F98] mb-2">
-                2. CONSOLIDADO DA JORNADA 5X2 POR EQUIPE (GRUPO A E GRUPO B)
+              <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#8A8F98] mb-2.5">
+                Detalhamento 5x2 por Equipe (Grupo A e Grupo B)
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-[13px]">
                   <thead>
-                    <tr className="border-b border-[#EBEBE6] text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8A8F98]">
-                      <th className="py-2.5 px-2.5">Equipe</th>
-                      <th className="py-2.5 px-2.5 text-center">Grupo</th>
-                      <th className="py-2.5 px-2.5 text-center">
+                    <tr className="border-b border-[#EBEBE6] bg-[#F3F2ED] text-[10px] font-bold uppercase tracking-[0.16em] text-[#8A8F98]">
+                      <th className="py-2.5 px-3">Equipe</th>
+                      <th className="py-2.5 px-3 text-center">Grupo</th>
+                      <th className="py-2.5 px-3 text-center">
                         Semanas Seg–Sex
                       </th>
-                      <th className="py-2.5 px-2.5 text-center">
+                      <th className="py-2.5 px-3 text-center">
                         Semanas Ter–Sáb
                       </th>
-                      <th className="py-2.5 px-2.5 text-center">
-                        Sábados Trab.
-                      </th>
-                      <th className="py-2.5 px-2.5">
+                      <th className="py-2.5 px-3 text-center">Sábados Trab.</th>
+                      <th className="py-2.5 px-3">
                         Jornada 5x2 Semana a Semana
                       </th>
-                      <th className="py-2.5 px-2.5 text-right">
-                        Total Dias 5x2
+                      <th className="py-2.5 px-3 text-right">
+                        Dias Trab. (5x2)
                       </th>
                     </tr>
                   </thead>
@@ -3949,15 +3941,17 @@ export default function AdminView({
                         key={`5x2-${r.team.id}`}
                         className="hover:bg-[#FBFAF7] align-top"
                       >
-                        <td className="py-3 px-2.5">
+                        <td className="py-3 px-3">
                           <div className="font-semibold text-[#14181F]">
                             {r.team.name}
                           </div>
                           <div className="text-[11px] text-[#8A8F98]">
-                            {r.team.kind === "campo" ? "Campo" : "Atendimento"}
+                            {r.team.kind === "campo"
+                              ? "Equipe de Campo"
+                              : "Atendimento"}
                           </div>
                         </td>
-                        <td className="py-3 px-2.5 text-center">
+                        <td className="py-3 px-3 text-center">
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                               r.team.group === "A"
@@ -3968,47 +3962,55 @@ export default function AdminView({
                             Grupo {r.team.group}
                           </span>
                         </td>
-                        <td className="py-3 px-2.5 text-center tabular-nums">
+                        <td className="py-3 px-3 text-center tabular-nums">
                           <span className="font-bold text-[#065F46]">
                             {r.weeksSegSex} sem.
                           </span>{" "}
                           <span className="text-[11.5px] text-[#6B7280]">
-                            ({r.diasSegSex}d)
+                            ({r.diasSegSex} dias)
                           </span>
                         </td>
-                        <td className="py-3 px-2.5 text-center tabular-nums">
+                        <td className="py-3 px-3 text-center tabular-nums">
                           <span className="font-bold text-[#1D4ED8]">
                             {r.weeksTerSab} sem.
                           </span>{" "}
                           <span className="text-[11.5px] text-[#6B7280]">
-                            ({r.diasTerSab}d)
+                            ({r.diasTerSab} dias)
                           </span>
                         </td>
-                        <td className="py-3 px-2.5 text-center tabular-nums font-semibold text-[#14181F]">
+                        <td className="py-3 px-3 text-center tabular-nums font-semibold text-[#14181F]">
                           {r.sabadosTrabalhados} sáb.
                         </td>
-                        <td className="py-3 px-2.5 min-w-[260px]">
-                          <div className="flex flex-wrap gap-1.5">
+                        <td className="py-3 px-3 min-w-[260px]">
+                          <div className="space-y-1">
                             {r.weekDetails.map((wd, idx) => (
-                              <span
+                              <div
                                 key={idx}
-                                className={`px-2 py-1 rounded-lg text-[11px] font-medium border ${
-                                  wd.isSegSex
-                                    ? "bg-[#10B981]/10 border-[#10B981]/25 text-[#065F46]"
-                                    : "bg-[#3B82F6]/10 border-[#3B82F6]/25 text-[#1D4ED8]"
-                                }`}
+                                className="px-2.5 py-1 rounded-lg text-[11.5px] bg-[#FBFAF7] border border-[#EBEBE6] flex flex-wrap items-center gap-1.5"
                               >
-                                <strong className="font-mono">
+                                <strong className="font-mono text-[#14181F]">
                                   {wd.weekLabel}:
-                                </strong>{" "}
-                                {wd.isSegSex ? "Seg–Sex" : "Ter–Sáb"} (
-                                {wd.workedInWeek}d)
-                              </span>
+                                </strong>
+                                <span
+                                  className={`font-bold ${
+                                    wd.isSegSex
+                                      ? "text-[#065F46]"
+                                      : "text-[#1D4ED8]"
+                                  }`}
+                                >
+                                  {wd.regime}
+                                </span>
+                                <span className="text-[#6B7280]">
+                                  ({wd.workedInWeek}d trab.)
+                                </span>
+                              </div>
                             ))}
                           </div>
                         </td>
-                        <td className="py-3 px-2.5 text-right tabular-nums font-bold text-[#065F46] whitespace-nowrap">
-                          {r.totalDias5x2} dias
+                        <td className="py-3 px-3 text-right tabular-nums font-bold text-[#065F46] whitespace-nowrap">
+                          <span className="px-3 py-1 rounded-full bg-[#10B981]/15 text-[#065F46]">
+                            {r.totalDias5x2} dias (5x2)
+                          </span>
                         </td>
                       </tr>
                     ))}
