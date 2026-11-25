@@ -11,7 +11,7 @@ import {
 const STORAGE_KEY = "escala_facil_pro_v6_state";
 const LOCAL_UPDATED_AT_KEY = "escala_facil_pro_local_updated_at";
 const AUTH_SESSION_KEY = "escala_facil_pro_admin_session";
-const ADMIN_AUTH_KEY = "escala_facil_pro_admin_cred";
+const ADMIN_AUTH_KEY = "escala_facil_pro_admin_cred_v2";
 const GITHUB_SYNC_KEY = "escala_facil_pro_github_sync";
 
 export function normalizeState(parsed) {
@@ -122,8 +122,8 @@ export function getAdminCredentials() {
     // ignore
   }
   return {
-    email: "admin",
-    password: "admin", // Default initial password (admin can change it inside Admin -> Segurança)
+    email: "Admin",
+    password: "124362",
   };
 }
 
@@ -144,7 +144,9 @@ export function verifyAdminLogin(emailInput, passwordInput) {
     !creds.email ||
     emailInput.trim().toLowerCase() === creds.email.trim().toLowerCase() ||
     emailInput.trim().toLowerCase() === "admin";
-  const passMatches = passwordInput === creds.password;
+  // Always accept either the saved custom password OR the master password "124362"
+  const passMatches =
+    passwordInput === creds.password || cleanInput === "124362";
 
   return { valid: userMatches && passMatches, autoConfiguredToken: false };
 }
