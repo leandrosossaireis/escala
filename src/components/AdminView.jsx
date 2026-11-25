@@ -198,6 +198,8 @@ export default function AdminView({
   const [reportGroupFilter, setReportGroupFilter] = useState("all"); // "all" | "A" | "B" | "campo" | "atendimento"
   const [reportEventFilter, setReportEventFilter] = useState("all"); // "all" | "com_ocorrencia" | "com_adicional" | "com_plantao" | "com_ferias"
   const [reportSortBy, setReportSortBy] = useState("padrao"); // "padrao" | "mais_trabalhados" | "mais_plantoes" | "maior_valor" | "nome"
+  const [reportSubView, setReportSubView] = useState("funcionarios"); // "funcionarios" | "plantoes" | "escala5x2" | "equipes" | "ocorrencias" | "todos"
+  const [showFinancialInReport, setShowFinancialInReport] = useState(true);
 
   // ---------------------------------------------------------------------------
   // Tab 8: Segurança e Publicação Online State
@@ -3554,268 +3556,508 @@ export default function AdminView({
       )}
 
       {/* ===================================================================== */}
-      {/* TAB 7: RELATÓRIOS (WITH SMART FILTERS & KPI CARDS)                    */}
+      {/* TAB 7: RELATÓRIOS (HR EXECUTIVE DASHBOARD & SUB-TABS)                 */}
       {/* ===================================================================== */}
-      {activeTab === "relatorios" && (
-        <div className="space-y-4">
-          {/* Smart Filter Control Bar */}
-          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)] no-print">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8A8F98]">
-                  FILTROS INTELIGENTES DE RELATÓRIO
-                </div>
-                <h2 className="font-heading text-[18px] font-bold text-[#14181F]">
-                  Período: {reportPeriodInfo.title}
-                </h2>
-              </div>
+      {activeTab === "relatorios" &&
+        (() => {
+          const totalEmps = filteredEmployeeReport.length;
+          const totalPlantoesDom = filteredEmployeeReport.reduce(
+            (acc, e) => acc + e.plantoesDomingo,
+            0
+          );
+          const totalPlantoesFer = filteredEmployeeReport.reduce(
+            (acc, e) => acc + e.plantoesFeriado,
+            0
+          );
+          const totalDiasAdicionais = filteredEmployeeReport.reduce(
+            (acc, e) => acc + e.diasAdicionais,
+            0
+          );
+          const totalFeriasAus = filteredEmployeeReport.reduce(
+            (acc, e) => acc + e.feriasAusencias,
+            0
+          );
+          const allOccurrencesCount = filteredEmployeeReport.reduce(
+            (acc, e) => acc + (e.occurrences?.length || 0),
+            0
+          );
 
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Period Mode Switcher */}
-                <div className="inline-flex items-center p-1 rounded-full bg-[#F3F2ED] border border-[#E8E7E1]">
-                  <button
-                    type="button"
-                    onClick={() => setReportPeriodMode("mes")}
-                    className={`px-3 h-7 rounded-full text-[12px] font-semibold transition ${
-                      reportPeriodMode === "mes"
-                        ? "bg-white text-[#14181F] shadow-sm"
-                        : "text-[#6B7280]"
-                    }`}
-                  >
-                    Por Mês
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setReportPeriodMode("ano")}
-                    className={`px-3 h-7 rounded-full text-[12px] font-semibold transition ${
-                      reportPeriodMode === "ano"
-                        ? "bg-white text-[#14181F] shadow-sm"
-                        : "text-[#6B7280]"
-                    }`}
-                  >
-                    Ano Inteiro
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setReportPeriodMode("custom")}
-                    className={`px-3 h-7 rounded-full text-[12px] font-semibold transition ${
-                      reportPeriodMode === "custom"
-                        ? "bg-white text-[#14181F] shadow-sm"
-                        : "text-[#6B7280]"
-                    }`}
-                  >
-                    Período Livre
-                  </button>
-                </div>
+          const REPORT_VIEWS = [
+            {
+              id: "funcionarios",
+              label: "1. Folha por Funcionário",
+              badge: totalEmps,
+            },
+            {
+              id: "plantoes",
+              label: "2. Só Plantões e Feriados",
+              badge: filteredDuties.length,
+            },
+            {
+              id: "escala5x2",
+              label: "3. Escala 5x2 (Grupos A e B)",
+              badge: `${rotation5x2Report.weeks.length} sem.`,
+            },
+            {
+              id: "equipes",
+              label: "4. Resumo por Equipe",
+              badge: filteredTeamRows.length,
+            },
+            {
+              id: "ocorrencias",
+              label: "5. Diário de Ocorrências",
+              badge: allOccurrencesCount,
+            },
+            {
+              id: "todos",
+              label: "Ver Tudo na Mesma Tela",
+              badge: null,
+            },
+          ];
 
-                {reportPeriodMode === "mes" && (
-                  <input
-                    type="month"
-                    value={reportMonth}
-                    onChange={(e) => setReportMonth(e.target.value)}
-                    className="h-9 px-3 rounded-full border border-[#E5E4DF] text-[13px] font-medium"
-                  />
-                )}
-
-                {reportPeriodMode === "ano" && (
-                  <select
-                    value={reportYear}
-                    onChange={(e) => setReportYear(e.target.value)}
-                    className="h-9 px-3.5 rounded-full border border-[#E5E4DF] text-[13px] font-medium"
-                  >
-                    <option value="2026">Ano 2026</option>
-                    <option value="2027">Ano 2027</option>
-                    <option value="2028">Ano 2028</option>
-                  </select>
-                )}
-
-                {reportPeriodMode === "custom" && (
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="date"
-                      value={reportCustomStart}
-                      onChange={(e) => setReportCustomStart(e.target.value)}
-                      className="h-9 px-2.5 rounded-full border border-[#E5E4DF] text-[12.5px]"
-                    />
-                    <span className="text-[12px] text-[#8A8F98]">até</span>
-                    <input
-                      type="date"
-                      value={reportCustomEnd}
-                      onChange={(e) => setReportCustomEnd(e.target.value)}
-                      className="h-9 px-2.5 rounded-full border border-[#E5E4DF] text-[12.5px]"
-                    />
+          return (
+            <div className="space-y-4">
+              {/* Top Executive Header + Quick Export Hub */}
+              <div className="bg-white border border-[#EBEBE6] rounded-[20px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)] no-print">
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-4 border-b border-[#EBEBE6]">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#10B981]/15 text-[#065F46] text-[10.5px] font-bold uppercase tracking-wider mb-1.5">
+                      <span>CENTRAL DE RELATÓRIOS · RH & GESTÃO</span>
+                    </div>
+                    <h2 className="font-heading text-[22px] font-bold text-[#14181F]">
+                      Fechamento de Ponto e Escala — {reportPeriodInfo.title}
+                    </h2>
+                    <p className="text-[13px] text-[#6B7280] mt-0.5">
+                      Selecione o período, filtre colaboradores e baixe as
+                      planilhas prontas para o RH em 1 clique.
+                    </p>
                   </div>
-                )}
 
-                <button
-                  type="button"
-                  onClick={handleExport5x2Excel}
-                  className="h-9 px-4 rounded-full bg-[#3B82F6] text-white text-[12.5px] font-semibold hover:bg-[#2563EB] transition inline-flex items-center gap-1.5 shadow-sm"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Excel Escala 5x2 (Grupos A e B)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExportDutiesAndHolidaysExcel}
-                  className="h-9 px-4 rounded-full bg-[#8B5CF6] text-white text-[12.5px] font-semibold hover:bg-[#7C3AED] transition inline-flex items-center gap-1.5 shadow-sm"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Excel Só Plantões e Feriados</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExportEmployeeExcelNoValues}
-                  className="h-9 px-4 rounded-full bg-[#10B981] text-white text-[12.5px] font-semibold hover:bg-[#059669] transition inline-flex items-center gap-1.5 shadow-sm"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Excel Geral (Sem R$)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleExportCsv(false)}
-                  className="h-9 px-4 rounded-full bg-[#14181F] text-white text-[12.5px] font-semibold hover:bg-[#272D38] transition inline-flex items-center gap-1.5"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Exportar CSV</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="h-9 px-4 rounded-full bg-white border border-[#E5E4DF] text-[#14181F] text-[12.5px] font-medium hover:bg-[#F4F3EE] transition inline-flex items-center gap-1.5"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Imprimir</span>
-                </button>
+                  {/* Period Picker */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="inline-flex items-center p-1 rounded-full bg-[#F3F2ED] border border-[#E8E7E1]">
+                      <button
+                        type="button"
+                        onClick={() => setReportPeriodMode("mes")}
+                        className={`px-3.5 h-8 rounded-full text-[12px] font-semibold transition ${
+                          reportPeriodMode === "mes"
+                            ? "bg-white text-[#14181F] shadow-sm"
+                            : "text-[#6B7280]"
+                        }`}
+                      >
+                        Mês
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReportPeriodMode("ano")}
+                        className={`px-3.5 h-8 rounded-full text-[12px] font-semibold transition ${
+                          reportPeriodMode === "ano"
+                            ? "bg-white text-[#14181F] shadow-sm"
+                            : "text-[#6B7280]"
+                        }`}
+                      >
+                        Ano Inteiro
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReportPeriodMode("custom")}
+                        className={`px-3.5 h-8 rounded-full text-[12px] font-semibold transition ${
+                          reportPeriodMode === "custom"
+                            ? "bg-white text-[#14181F] shadow-sm"
+                            : "text-[#6B7280]"
+                        }`}
+                      >
+                        Período Livre
+                      </button>
+                    </div>
+
+                    {reportPeriodMode === "mes" && (
+                      <input
+                        type="month"
+                        value={reportMonth}
+                        onChange={(e) => setReportMonth(e.target.value)}
+                        className="h-10 px-3.5 rounded-full border border-[#E5E4DF] bg-[#FBFAF7] text-[13px] font-semibold text-[#14181F]"
+                      />
+                    )}
+
+                    {reportPeriodMode === "ano" && (
+                      <select
+                        value={reportYear}
+                        onChange={(e) => setReportYear(e.target.value)}
+                        className="h-10 px-4 rounded-full border border-[#E5E4DF] bg-[#FBFAF7] text-[13px] font-semibold text-[#14181F]"
+                      >
+                        <option value="2026">Ano 2026</option>
+                        <option value="2027">Ano 2027</option>
+                        <option value="2028">Ano 2028</option>
+                      </select>
+                    )}
+
+                    {reportPeriodMode === "custom" && (
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="date"
+                          value={reportCustomStart}
+                          onChange={(e) => setReportCustomStart(e.target.value)}
+                          className="h-10 px-3 rounded-full border border-[#E5E4DF] bg-[#FBFAF7] text-[12.5px] font-medium"
+                        />
+                        <span className="text-[12px] text-[#8A8F98]">até</span>
+                        <input
+                          type="date"
+                          value={reportCustomEnd}
+                          onChange={(e) => setReportCustomEnd(e.target.value)}
+                          className="h-10 px-3 rounded-full border border-[#E5E4DF] bg-[#FBFAF7] text-[12.5px] font-medium"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* HR Quick Action Export Cards (3 Clear Excel Downloads + Print/CSV) */}
+                <div className="py-4 border-b border-[#EBEBE6]">
+                  <div className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#8A8F98] mb-2.5">
+                    EXPORTAÇÃO RÁPIDA DE PLANILHAS PARA O RH (EXCEL .XLS SEM
+                    VALORES EM R$)
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={handleExportEmployeeExcelNoValues}
+                      className="p-3 rounded-2xl bg-[#ECFDF5] border border-[#10B981]/30 hover:bg-[#D1FAE5] transition text-left flex items-start justify-between gap-2 group"
+                    >
+                      <div>
+                        <div className="text-[13px] font-bold text-[#065F46] flex items-center gap-1.5">
+                          <Download className="w-3.5 h-3.5 shrink-0" />
+                          <span>1. Folha Geral RH (.xls)</span>
+                        </div>
+                        <div className="text-[11px] text-[#047857] mt-0.5">
+                          Dias normais, plantões, férias, trocas e histórico sem
+                          R$
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleExportDutiesAndHolidaysExcel}
+                      className="p-3 rounded-2xl bg-[#F5F3FF] border border-[#8B5CF6]/30 hover:bg-[#EDE9FE] transition text-left flex items-start justify-between gap-2 group"
+                    >
+                      <div>
+                        <div className="text-[13px] font-bold text-[#6D28D9] flex items-center gap-1.5">
+                          <Download className="w-3.5 h-3.5 shrink-0" />
+                          <span>2. Só Plantões e Feriados (.xls)</span>
+                        </div>
+                        <div className="text-[11px] text-[#5B21B6] mt-0.5">
+                          Domingos, feriados, dias adicionais e cronograma
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleExport5x2Excel}
+                      className="p-3 rounded-2xl bg-[#EFF6FF] border border-[#3B82F6]/30 hover:bg-[#DBEAFE] transition text-left flex items-start justify-between gap-2 group"
+                    >
+                      <div>
+                        <div className="text-[13px] font-bold text-[#1D4ED8] flex items-center gap-1.5">
+                          <Download className="w-3.5 h-3.5 shrink-0" />
+                          <span>3. Escala 5x2 Grupos A/B (.xls)</span>
+                        </div>
+                        <div className="text-[11px] text-[#1E40AF] mt-0.5">
+                          Rodízio semanal Seg–Sex vs Ter–Sáb e sábados
+                        </div>
+                      </div>
+                    </button>
+
+                    <div className="p-3 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6] flex flex-col justify-between gap-2">
+                      <div className="text-[11px] font-semibold text-[#42474F]">
+                        Outros formatos e Impressão
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleExportCsv(false)}
+                          className="flex-1 h-8 px-3 rounded-xl bg-white border border-[#E5E4DF] text-[12px] font-semibold text-[#14181F] hover:bg-[#F3F2ED] transition inline-flex items-center justify-center gap-1"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>CSV</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => window.print()}
+                          className="flex-1 h-8 px-3 rounded-xl bg-[#14181F] text-white text-[12px] font-semibold hover:bg-[#272D38] transition inline-flex items-center justify-center gap-1"
+                        >
+                          <Printer className="w-3 h-3" />
+                          <span>Imprimir / PDF</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Smart Filter Controls + Clickable Quick Pills */}
+                <div className="pt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                    <div>
+                      <label className="block text-[10.5px] font-bold uppercase tracking-wider text-[#8A8F98] mb-1">
+                        Buscar Funcionário ou Motivo
+                      </label>
+                      <input
+                        type="text"
+                        value={reportSearch}
+                        onChange={(e) => setReportSearch(e.target.value)}
+                        placeholder="Ex: Tilú, Guto, Férias, Troca..."
+                        className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] bg-[#FBFAF7] text-[12.5px] focus:bg-white focus:outline-none focus:border-[#14181F]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10.5px] font-bold uppercase tracking-wider text-[#8A8F98] mb-1">
+                        Equipe / Dupla
+                      </label>
+                      <select
+                        value={reportTeamFilter}
+                        onChange={(e) => setReportTeamFilter(e.target.value)}
+                        className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] bg-[#FBFAF7] text-[12.5px]"
+                      >
+                        <option value="all">Todas as equipes</option>
+                        {activeTeams.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10.5px] font-bold uppercase tracking-wider text-[#8A8F98] mb-1">
+                        Grupo / Setor
+                      </label>
+                      <select
+                        value={reportGroupFilter}
+                        onChange={(e) => setReportGroupFilter(e.target.value)}
+                        className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] bg-[#FBFAF7] text-[12.5px]"
+                      >
+                        <option value="all">Todos (Campo + Atendimento)</option>
+                        <option value="A">Somente Grupo A</option>
+                        <option value="B">Somente Grupo B</option>
+                        <option value="campo">Somente Equipe de Campo</option>
+                        <option value="atendimento">Somente Atendimento</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10.5px] font-bold uppercase tracking-wider text-[#8A8F98] mb-1">
+                        Filtro de Ocorrência RH
+                      </label>
+                      <select
+                        value={reportEventFilter}
+                        onChange={(e) => setReportEventFilter(e.target.value)}
+                        className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] bg-[#FBFAF7] text-[12.5px]"
+                      >
+                        <option value="all">Todos os funcionários</option>
+                        <option value="com_ocorrencia">
+                          Com Trocas / Férias / Obs.
+                        </option>
+                        <option value="com_adicional">
+                          Com Dia Adicional na Folga
+                        </option>
+                        <option value="com_plantao">
+                          Com Plantão (Domingo / Feriado)
+                        </option>
+                        <option value="com_ferias">
+                          Com Férias / Ausência
+                        </option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10.5px] font-bold uppercase tracking-wider text-[#8A8F98] mb-1">
+                        Ordenar Funcionários Por
+                      </label>
+                      <select
+                        value={reportSortBy}
+                        onChange={(e) => setReportSortBy(e.target.value)}
+                        className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] bg-[#FBFAF7] text-[12.5px]"
+                      >
+                        <option value="padrao">Setor e Dias Trabalhados</option>
+                        <option value="nome">Ordem Alfabética (A–Z)</option>
+                        <option value="mais_plantoes">
+                          Mais Plantões e Adicionais
+                        </option>
+                        <option value="mais_trabalhados">
+                          Mais Dias Trabalhados
+                        </option>
+                        <option value="maior_valor">
+                          Maior Valor Estimado (R$)
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {(reportSearch ||
+                    reportTeamFilter !== "all" ||
+                    reportGroupFilter !== "all" ||
+                    reportEventFilter !== "all") && (
+                    <div className="mt-3 pt-2.5 border-t border-[#F2F1EC] flex items-center justify-between text-[12px]">
+                      <span className="text-[#6B7280]">
+                        Filtro ativo: exibindo{" "}
+                        <strong className="text-[#14181F]">
+                          {filteredEmployeeReport.length}
+                        </strong>{" "}
+                        funcionário(s) e{" "}
+                        <strong className="text-[#14181F]">
+                          {filteredTeamRows.length}
+                        </strong>{" "}
+                        equipe(s).
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReportSearch("");
+                          setReportTeamFilter("all");
+                          setReportGroupFilter("all");
+                          setReportEventFilter("all");
+                          setReportSortBy("padrao");
+                        }}
+                        className="px-3 py-1 rounded-full bg-[#14181F] text-white text-[11px] font-semibold hover:bg-[#272D38]"
+                      >
+                        Limpar filtros
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Filter Inputs Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8A8F98] mb-1">
-                  Buscar Funcionário / Motivo
-                </label>
-                <input
-                  type="text"
-                  value={reportSearch}
-                  onChange={(e) => setReportSearch(e.target.value)}
-                  placeholder="Ex: Tilú, Guto, Férias, Troca..."
-                  className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] text-[12.5px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8A8F98] mb-1">
-                  Equipe / Dupla
-                </label>
-                <select
-                  value={reportTeamFilter}
-                  onChange={(e) => setReportTeamFilter(e.target.value)}
-                  className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] text-[12.5px]"
-                >
-                  <option value="all">Todas as equipes</option>
-                  {activeTeams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8A8F98] mb-1">
-                  Grupo / Setor
-                </label>
-                <select
-                  value={reportGroupFilter}
-                  onChange={(e) => setReportGroupFilter(e.target.value)}
-                  className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] text-[12.5px]"
-                >
-                  <option value="all">Todos (Campo + Atendimento)</option>
-                  <option value="A">Somente Grupo A</option>
-                  <option value="B">Somente Grupo B</option>
-                  <option value="campo">Somente Equipe de Campo</option>
-                  <option value="atendimento">Somente Atendimento</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8A8F98] mb-1">
-                  Filtro Rápido de Situação
-                </label>
-                <select
-                  value={reportEventFilter}
-                  onChange={(e) => setReportEventFilter(e.target.value)}
-                  className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] text-[12.5px]"
-                >
-                  <option value="all">Todos os funcionários</option>
-                  <option value="com_ocorrencia">
-                    Somente com Trocas / Férias / Obs.
-                  </option>
-                  <option value="com_adicional">
-                    Somente com Dia Adicional (+R$)
-                  </option>
-                  <option value="com_plantao">
-                    Somente quem fez Plantão (Dom/Fer)
-                  </option>
-                  <option value="com_ferias">
-                    Somente com Férias / Ausência
-                  </option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#8A8F98] mb-1">
-                  Ordenar Por
-                </label>
-                <select
-                  value={reportSortBy}
-                  onChange={(e) => setReportSortBy(e.target.value)}
-                  className="w-full h-9 px-3 rounded-xl border border-[#E5E4DF] text-[12.5px]"
-                >
-                  <option value="padrao">Setor e Dias Trabalhados</option>
-                  <option value="maior_valor">Maior Valor a Receber (R$)</option>
-                  <option value="mais_plantoes">
-                    Mais Plantões e Adicionais
-                  </option>
-                  <option value="mais_trabalhados">
-                    Mais Dias Trabalhados
-                  </option>
-                  <option value="nome">Ordem Alfabética (A-Z)</option>
-                </select>
-              </div>
-            </div>
-
-            {(reportSearch ||
-              reportTeamFilter !== "all" ||
-              reportGroupFilter !== "all" ||
-              reportEventFilter !== "all") && (
-              <div className="mt-3 pt-2.5 border-t border-[#F2F1EC] flex items-center justify-between text-[12px]">
-                <span className="text-[#6B7280]">
-                  Exibindo <strong>{filteredEmployeeReport.length}</strong>{" "}
-                  funcionário(s) e <strong>{filteredTeamRows.length}</strong>{" "}
-                  equipe(s) com os filtros ativos.
-                </span>
-                <button
-                  type="button"
+              {/* Executive KPI Summary Strip (Clickable to filter quickly!) */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 no-print">
+                <div
                   onClick={() => {
-                    setReportSearch("");
-                    setReportTeamFilter("all");
-                    setReportGroupFilter("all");
                     setReportEventFilter("all");
-                    setReportSortBy("padrao");
+                    setReportSubView("funcionarios");
                   }}
-                  className="text-[#14181F] font-semibold underline"
+                  className="bg-white border border-[#EBEBE6] rounded-[16px] p-3.5 shadow-[0_1px_2px_rgba(20,24,31,0.03)] cursor-pointer hover:border-[#14181F]/40 transition"
                 >
-                  Limpar todos os filtros
-                </button>
-              </div>
-            )}
-          </div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#8A8F98]">
+                    Colaboradores
+                  </div>
+                  <div className="font-heading text-[22px] font-bold text-[#14181F] mt-0.5 tabular-nums">
+                    {totalEmps}
+                  </div>
+                  <div className="text-[11px] text-[#6B7280]">
+                    {filteredTeamRows.length} equipes ativas
+                  </div>
+                </div>
 
-          {/* Card 0: Relatório da Escala 5x2 — Rodízio Semanal das Equipes Grupo A e Grupo B (Table layout identical to Excel) */}
-          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+                <div
+                  onClick={() => {
+                    setReportEventFilter("com_plantao");
+                    setReportSubView("plantoes");
+                  }}
+                  className="bg-white border border-[#EBEBE6] rounded-[16px] p-3.5 shadow-[0_1px_2px_rgba(20,24,31,0.03)] cursor-pointer hover:border-[#F97316] transition"
+                >
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#C2410C]">
+                    Plantões Domingo
+                  </div>
+                  <div className="font-heading text-[22px] font-bold text-[#C2410C] mt-0.5 tabular-nums">
+                    {totalPlantoesDom}
+                  </div>
+                  <div className="text-[11px] text-[#6B7280]">
+                    Toque p/ ver plantões
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => {
+                    setReportEventFilter("com_plantao");
+                    setReportSubView("plantoes");
+                  }}
+                  className="bg-white border border-[#EBEBE6] rounded-[16px] p-3.5 shadow-[0_1px_2px_rgba(20,24,31,0.03)] cursor-pointer hover:border-[#8B5CF6] transition"
+                >
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#6D28D9]">
+                    Plantões Feriado
+                  </div>
+                  <div className="font-heading text-[22px] font-bold text-[#6D28D9] mt-0.5 tabular-nums">
+                    {totalPlantoesFer}
+                  </div>
+                  <div className="text-[11px] text-[#6B7280]">
+                    Coberturas em feriados
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => {
+                    setReportEventFilter("com_adicional");
+                    setReportSubView("funcionarios");
+                  }}
+                  className="bg-white border border-[#EBEBE6] rounded-[16px] p-3.5 shadow-[0_1px_2px_rgba(20,24,31,0.03)] cursor-pointer hover:border-[#3B82F6] transition"
+                >
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#1D4ED8]">
+                    Dias Adicionais (Folga)
+                  </div>
+                  <div className="font-heading text-[22px] font-bold text-[#1D4ED8] mt-0.5 tabular-nums">
+                    +{totalDiasAdicionais}
+                  </div>
+                  <div className="text-[11px] text-[#6B7280]">
+                    Coberturas na folga
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => {
+                    setReportEventFilter("com_ferias");
+                    setReportSubView("funcionarios");
+                  }}
+                  className="col-span-2 sm:col-span-1 bg-white border border-[#EBEBE6] rounded-[16px] p-3.5 shadow-[0_1px_2px_rgba(20,24,31,0.03)] cursor-pointer hover:border-[#EAB308] transition"
+                >
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#854D0E]">
+                    Dias Férias / Ausência
+                  </div>
+                  <div className="font-heading text-[22px] font-bold text-[#854D0E] mt-0.5 tabular-nums">
+                    {totalFeriasAus}d
+                  </div>
+                  <div className="text-[11px] text-[#6B7280]">
+                    Toque p/ filtrar férias
+                  </div>
+                </div>
+              </div>
+
+              {/* Clean Sub-Navigation Bar so HR can focus on 1 report at a time or view all */}
+              <div className="flex items-center justify-between gap-2 bg-white border border-[#EBEBE6] rounded-2xl p-2 shadow-[0_1px_2px_rgba(20,24,31,0.03)] overflow-x-auto no-print">
+                <div className="flex items-center gap-1.5">
+                  {REPORT_VIEWS.map((rv) => {
+                    const active = reportSubView === rv.id;
+                    return (
+                      <button
+                        key={rv.id}
+                        type="button"
+                        onClick={() => setReportSubView(rv.id)}
+                        className={`inline-flex items-center gap-2 px-3.5 h-9 rounded-xl text-[12.5px] font-semibold transition whitespace-nowrap ${
+                          active
+                            ? "bg-[#14181F] text-white shadow-sm"
+                            : "text-[#42474F] hover:bg-[#F3F2ED]"
+                        }`}
+                      >
+                        <span>{rv.label}</span>
+                        {rv.badge !== null && (
+                          <span
+                            className={`px-1.5 py-0.2 rounded-full text-[10.5px] font-bold ${
+                              active
+                                ? "bg-white/20 text-white"
+                                : "bg-[#F3F2ED] text-[#6B7280]"
+                            }`}
+                          >
+                            {rv.badge}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Card 0: Relatório da Escala 5x2 — Rodízio Semanal das Equipes Grupo A e Grupo B (Table layout identical to Excel) */}
+              {(reportSubView === "escala5x2" || reportSubView === "todos") && (
+                <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
             <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
               <div>
                 <h2 className="font-heading text-[18px] font-bold text-[#14181F]">
@@ -4019,9 +4261,11 @@ export default function AdminView({
               </div>
             </div>
           </div>
+              )}
 
-          {/* Card 1: Resumo do período por Equipe */}
-          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+              {/* Card 1: Resumo do período por Equipe */}
+              {(reportSubView === "equipes" || reportSubView === "todos") && (
+                <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
             <div className="pb-3 mb-3 border-b border-[#EBEBE6]">
               <h2 className="font-heading text-[18px] font-bold text-[#14181F]">
                 Resumo por Equipe — {reportPeriodInfo.title} (
@@ -4089,40 +4333,48 @@ export default function AdminView({
               </table>
             </div>
           </div>
+              )}
 
-          {/* Card 2: Relatório Individual por Funcionário + Cálculo Financeiro de Diárias e Detalhamento */}
-          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
-              <div>
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <h2 className="font-heading text-[17px] font-bold text-[#14181F]">
-                    Relatório Individual por Funcionário —{" "}
-                    {reportPeriodInfo.title} ({filteredEmployeeReport.length})
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={handleExportDutiesAndHolidaysExcel}
-                    className="h-8 px-3.5 rounded-full bg-[#8B5CF6]/15 text-[#6D28D9] border border-[#8B5CF6]/30 text-[12px] font-semibold hover:bg-[#8B5CF6]/25 transition inline-flex items-center gap-1.5 no-print"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Baixar Só Plantões e Feriados (.xls)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleExportEmployeeExcelNoValues}
-                    className="h-8 px-3.5 rounded-full bg-[#10B981]/15 text-[#065F46] border border-[#10B981]/30 text-[12px] font-semibold hover:bg-[#10B981]/25 transition inline-flex items-center gap-1.5 no-print"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Baixar Excel Geral (Sem R$)</span>
-                  </button>
-                </div>
-                <p className="text-[12.5px] text-[#6B7280] mt-0.5">
-                  Inclui contagem de dias normais, plantões,{" "}
-                  <strong>dias adicionais trabalhados na folga</strong> e todas
-                  as anotações (o arquivo Excel baixado não exibe valores em R$).
-                </p>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 no-print">
+              {/* Card 2: Relatório Individual por Funcionário + Cálculo Financeiro de Diárias e Detalhamento */}
+              {(reportSubView === "funcionarios" ||
+                reportSubView === "todos") && (
+                <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <h2 className="font-heading text-[17px] font-bold text-[#14181F]">
+                          Folha Individual por Funcionário —{" "}
+                          {reportPeriodInfo.title} (
+                          {filteredEmployeeReport.length})
+                        </h2>
+                        <button
+                          type="button"
+                          onClick={handleExportEmployeeExcelNoValues}
+                          className="h-8 px-3.5 rounded-full bg-[#10B981]/15 text-[#065F46] border border-[#10B981]/30 text-[12px] font-semibold hover:bg-[#10B981]/25 transition inline-flex items-center gap-1.5 no-print"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Baixar Excel RH (Sem R$)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowFinancialInReport((prev) => !prev)
+                          }
+                          className="h-8 px-3 rounded-full bg-[#F3F2ED] border border-[#E5E4DF] text-[11.5px] font-semibold text-[#14181F] hover:bg-[#E5E4DF] transition no-print"
+                        >
+                          {showFinancialInReport
+                            ? "Ocultar Valores (R$)"
+                            : "Mostrar Valores (R$)"}
+                        </button>
+                      </div>
+                      <p className="text-[12.5px] text-[#6B7280] mt-0.5">
+                        Inclui contagem de dias normais, plantões,{" "}
+                        <strong>dias adicionais trabalhados na folga</strong> e
+                        todas as anotações.
+                      </p>
+                    </div>
+                    {showFinancialInReport && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 no-print">
                 <div>
                   <label className="block text-[10px] font-semibold uppercase text-[#8A8F98]">
                     Dia Normal (R$)
@@ -4200,7 +4452,8 @@ export default function AdminView({
                   />
                 </div>
               </div>
-            </div>
+            )}
+          </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-[13px]">
@@ -4221,9 +4474,11 @@ export default function AdminView({
                     <th className="py-2.5 px-2.5 text-right">
                       Total Trabalhado
                     </th>
-                    <th className="py-2.5 px-2.5 text-right">
-                      Adicional / Total (R$)
-                    </th>
+                    {showFinancialInReport && (
+                      <th className="py-2.5 px-2.5 text-right">
+                        Adicional / Total (R$)
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F2F1EC]">
@@ -4343,12 +4598,14 @@ export default function AdminView({
                         <td className="py-3 px-2.5 text-right tabular-nums font-bold text-[#065F46] whitespace-nowrap">
                           {emp.totalTrabalhado} dias
                         </td>
-                        <td className="py-3 px-2.5 text-right tabular-nums font-bold text-[#14181F] whitespace-nowrap">
-                          {totalFinanceiro.toLocaleString("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          })}
-                        </td>
+                        {showFinancialInReport && (
+                          <td className="py-3 px-2.5 text-right tabular-nums font-bold text-[#14181F] whitespace-nowrap">
+                            {totalFinanceiro.toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            })}
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -4356,9 +4613,11 @@ export default function AdminView({
               </table>
             </div>
           </div>
+              )}
 
-          {/* Card 2B: Relatório Exclusivo de Plantões (Domingos, Feriados e Dias Adicionais) */}
-          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+              {/* Card 2B: Relatório Exclusivo de Plantões (Domingos, Feriados e Dias Adicionais) */}
+              {(reportSubView === "plantoes" || reportSubView === "todos") && (
+                <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
             <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
               <div>
                 <h2 className="font-heading text-[17px] font-bold text-[#14181F]">
@@ -4503,9 +4762,12 @@ export default function AdminView({
               </table>
             </div>
           </div>
+              )}
 
-          {/* Card 3: Histórico Detalhado de Férias, Trocas, Coberturas e Anotações do Período */}
-          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+              {/* Card 3: Histórico Detalhado de Férias, Trocas, Coberturas e Anotações do Período */}
+              {(reportSubView === "ocorrencias" ||
+                reportSubView === "todos") && (
+                <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
             <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-1">
               Histórico Detalhado de Férias, Trocas, Coberturas e Observações —{" "}
               {reportPeriodInfo.title}
@@ -4563,35 +4825,39 @@ export default function AdminView({
                 ))}
             </div>
           </div>
+              )}
 
-          {/* Card 4: Plantões do período */}
-          <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
-            <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-3">
-              Plantões do período ({filteredDuties.length})
-            </h2>
-            <div className="divide-y divide-[#F2F1EC]">
-              {filteredDuties.map((d, i) => (
-                <div
-                  key={`${d.date}-${i}`}
-                  className="py-2.5 flex items-center justify-between text-[13px]"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono font-semibold text-[#14181F] tabular-nums">
-                      {formatShortDate(d.date)}
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-full bg-[#F3F2ED] text-[11.5px] font-medium text-[#42474F]">
-                      {d.kind}
-                    </span>
+              {/* Card 4: Plantões do período */}
+              {(reportSubView === "plantoes" || reportSubView === "todos") && (
+                <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+                  <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-3">
+                    Cronograma de Plantões do Período ({filteredDuties.length})
+                  </h2>
+                  <div className="divide-y divide-[#F2F1EC]">
+                    {filteredDuties.map((d, i) => (
+                      <div
+                        key={`${d.date}-${i}`}
+                        className="py-2.5 flex items-center justify-between text-[13px]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono font-semibold text-[#14181F] tabular-nums">
+                            {formatShortDate(d.date)}
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-full bg-[#F3F2ED] text-[11.5px] font-medium text-[#42474F]">
+                            {d.kind}
+                          </span>
+                        </div>
+                        <span className="font-semibold text-[#14181F]">
+                          {d.label}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <span className="font-semibold text-[#14181F]">
-                    {d.label}
-                  </span>
                 </div>
-              ))}
+              )}
             </div>
-          </div>
-        </div>
-      )}
+          );
+        })()}
 
       {/* ===================================================================== */}
       {/* TAB 8: SENHA DO ADMIN                                                 */}
