@@ -913,7 +913,7 @@ export function buildMonthlyReport(calendarData, teams) {
     if (day.weekday !== 0 && day.holiday && day.holiday.type !== "facultativo" && (day.campo_duty_label || day.campo_team_id)) {
       duties.push({
         date: day.date,
-        kind: day.has_troca ? `Troca (${day.holiday.name})` : `Plantão feriado (${day.holiday.name})`,
+        kind: day.has_troca ? `Trabalhou na Troca do Feriado (${day.holiday.name})` : `Plantão feriado (${day.holiday.name})`,
         team_id: day.campo_team_id,
         label: day.campo_duty_label,
       });
@@ -1014,7 +1014,7 @@ export function buildEmployeeWorkdaySummary(calendarData, teams, services = []) 
             });
             emp.occurrences.push({
               date: day.date,
-              badge: isSwap ? "Troca (Domingo)" : "Plantão Dom.",
+              badge: isSwap ? "Trabalhou na Troca (Domingo)" : "Plantão Dom.",
               color: "domingo",
               description:
                 entry.note ||
@@ -1038,7 +1038,9 @@ export function buildEmployeeWorkdaySummary(calendarData, teams, services = []) 
             });
             emp.occurrences.push({
               date: day.date,
-              badge: isSwap ? `Troca (${holName})` : `Plantão Fer.`,
+              badge: isSwap
+                ? `Trabalhou na Troca do Feriado (${holName})`
+                : `Plantão Fer.`,
               color: "feriado",
               description:
                 entry.note ||
@@ -1102,7 +1104,7 @@ export function buildEmployeeWorkdaySummary(calendarData, teams, services = []) 
             if (entry.status === "troca") {
               emp.occurrences.push({
                 date: day.date,
-                badge: "Folgou em Troca",
+                badge: "Folgou na Troca",
                 color: "folga",
                 description:
                   entry.note ||

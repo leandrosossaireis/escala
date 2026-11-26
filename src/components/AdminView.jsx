@@ -198,8 +198,8 @@ export default function AdminView({
   const [reportGroupFilter, setReportGroupFilter] = useState("all"); // "all" | "A" | "B" | "campo" | "atendimento"
   const [reportEventFilter, setReportEventFilter] = useState("all"); // "all" | "com_ocorrencia" | "com_adicional" | "com_plantao" | "com_ferias"
   const [reportSortBy, setReportSortBy] = useState("padrao"); // "padrao" | "mais_trabalhados" | "mais_plantoes" | "maior_valor" | "nome"
-  const [reportSubView, setReportSubView] = useState("funcionarios"); // "funcionarios" | "plantoes" | "escala5x2" | "equipes" | "ocorrencias" | "todos"
-  const [showFinancialInReport, setShowFinancialInReport] = useState(true);
+  const [reportSubView, setReportSubView] = useState("todos"); // "todos" | "funcionarios" | "plantoes" | "escala5x2" | "ocorrencias"
+  const [showFinancialInReport, setShowFinancialInReport] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Tab 8: Segurança e Publicação Online State
@@ -1234,14 +1234,113 @@ export default function AdminView({
   // Handlers: Tab 7 (Export Excel / CSV / Backup JSON)
   // ===========================================================================
   function handleExportEmployeeExcelNoValues() {
-    // Build a styled Excel (.xls) workbook with the exact visual layout & colors of the Relatório Individual por Funcionário table, WITHOUT financial values (R$)
+    // Build a styled Excel (.xls) workbook with a clean unified HR executive layout (without financial values R$)
     const escapeHtml = (str) =>
-      String(str || "")
+      String(str ?? "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
 
+    const totalEmps = filteredEmployeeReport.length;
+    const totalNormais = filteredEmployeeReport.reduce(
+      (a, e) => a + e.diasNormais,
+      0
+    );
+    const totalPlantDom = filteredEmployeeReport.reduce(
+      (a, e) => a + e.plantoesDomingo,
+      0
+    );
+    const totalPlantFer = filteredEmployeeReport.reduce(
+      (a, e) => a + e.plantoesFeriado,
+      0
+    );
+    const totalAdicionais = filteredEmployeeReport.reduce(
+      (a, e) => a + e.diasAdicionais,
+      0
+    );
+    const totalFeriasAus = filteredEmployeeReport.reduce(
+      (a, e) => a + e.feriasAusencias,
+      0
+    );
+    const totalFolgas = filteredEmployeeReport.reduce(
+      (a, e) => a + e.folgas,
+      0
+    );
+    const totalTrabalhado = filteredEmployeeReport.reduce(
+      (a, e) => a + e.totalTrabalhado,
+      0
+    );
+    const totalOccurrences = filteredEmployeeReport.reduce(
+      (a, e) => a + (e.occurrences?.length || 0),
+      0
+    );
+
+    // 1. Rodízio semanal 5x2 (Grupos A e B) — EM PRIMEIRO LUGAR
+    const groupATeamsNames = activeTeams
+      .filter((t) => t.group === "A")
+      .map((t) => t.name)
+      .join(" · ");
+    const groupBTeamsNames = activeTeams
+      .filter((t) => t.group === "B")
+      .map((t) => t.name)
+      .join(" · ");
+    const weeks5x2Html = rotation5x2Report.weeks
+      .map((w, idx) => {
+        const monFriNames =
+          w.monFriGroup === "A" ? groupATeamsNames : groupBTeamsNames;
+        const tueSatNames =
+          w.tueSatGroup === "A" ? groupATeamsNames : groupBTeamsNames;
+        const dm = (iso) => escapeHtml(formatShortDate(iso).slice(0, 5));
+        return `<tr>
+          <td style="padding:10px 8px; border-bottom:1px solid #EBEBE6; font-weight:bold; color:#14181F; vertical-align:top;">
+            Semana ${idx + 1}<br/>
+            <span style="font-family:Consolas,monospace; font-size:11.5px; color:#6B7280; font-weight:normal;">
+              ${escapeHtml(formatShortDate(w.weekMonday))} a ${escapeHtml(
+          formatShortDate(w.weekSaturday)
+        )}
+            </span>
+          </td>
+          <td colspan="4" style="padding:10px 8px; border-bottom:1px solid #EBEBE6; background:#ECFDF5; vertical-align:top;">
+            <div style="font-weight:bold; color:#065F46; font-size:13px;">GRUPO ${escapeHtml(
+              w.monFriGroup
+            )} — Segunda a Sexta</div>
+            <div style="font-size:11.5px; color:#14181F; margin-top:2px;">${escapeHtml(
+              monFriNames
+            )}</div>
+            <div style="font-size:10.5px; color:#047857; margin-top:2px;">Folga da semana (5x2): Sábado (${dm(
+              w.weekSaturday
+            )}) e Domingo (${dm(w.weekSunday)})</div>
+          </td>
+          <td colspan="4" style="padding:10px 8px; border-bottom:1px solid #EBEBE6; background:#EFF6FF; vertical-align:top;">
+            <div style="font-weight:bold; color:#1D4ED8; font-size:13px;">GRUPO ${escapeHtml(
+              w.tueSatGroup
+            )} — Terça a Sábado</div>
+            <div style="font-size:11.5px; color:#14181F; margin-top:2px;">${escapeHtml(
+              tueSatNames
+            )}</div>
+            <div style="font-size:10.5px; color:#1E40AF; margin-top:2px;">Folga da semana (5x2): Segunda (${dm(
+              w.weekMonday
+            )}) e Domingo (${dm(w.weekSunday)})</div>
+          </td>
+        </tr>`;
+      })
+      .join("");
+    const section5x2Html = `
+          <tr>
+            <td colspan="9" style="padding:11px 10px; font-size:14px; font-weight:bold; color:#FFFFFF; background:#14181F;">
+              1. ESCALA 5x2 — RODÍZIO SEMANAL DOS GRUPOS A E B (${rotation5x2Report.weeks.length} SEMANAS)
+            </td>
+          </tr>
+          <tr style="background:#F3F2ED; color:#8A8F98; font-size:10.5px; font-weight:bold; text-transform:uppercase;">
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:left;">SEMANA</th>
+            <th colspan="4" style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:left;">TURNO SEGUNDA A SEXTA (FOLGA SÁBADO E DOMINGO)</th>
+            <th colspan="4" style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:left;">TURNO TERÇA A SÁBADO (FOLGA DOMINGO E SEGUNDA)</th>
+          </tr>
+          ${weeks5x2Html}
+          <tr><td colspan="9" style="padding:12px;"></td></tr>`;
+
+    // 2. Folha Individual por Funcionário / Equipe — LOGO APÓS A ESCALA 5X2
     const rowsHtml = filteredEmployeeReport
       .map((emp) => {
         const cleanBadge = (b) => String(b || "").replace(/\s*\(\+R\$\)/g, "");
@@ -1329,6 +1428,81 @@ export default function AdminView({
       })
       .join("");
 
+    const employeeTotalsRowHtml = `<tr style="background:#F3F2ED; font-weight:bold;">
+      <td style="padding:10px 8px; border-top:2px solid #14181F; color:#14181F;">TOTAL CONSOLIDADO (${totalEmps} colaboradores)</td>
+      <td style="padding:10px 8px; border-top:2px solid #14181F; text-align:center; color:#14181F;">${totalNormais}</td>
+      <td style="padding:10px 8px; border-top:2px solid #14181F; text-align:center; color:#C2410C; background:#FFEDD5;">${totalPlantDom}</td>
+      <td style="padding:10px 8px; border-top:2px solid #14181F; text-align:center; color:#6D28D9; background:#EDE9FE;">${totalPlantFer}</td>
+      <td style="padding:10px 8px; border-top:2px solid #14181F; text-align:center; color:#1D4ED8; background:#DBEAFE;">+${totalAdicionais}</td>
+      <td style="padding:10px 8px; border-top:2px solid #14181F; text-align:center; color:#854D0E; background:#FEF08A;">${totalFeriasAus}d</td>
+      <td style="padding:10px 8px; border-top:2px solid #14181F; text-align:center; color:#42474F;">${totalFolgas}</td>
+      <td style="padding:10px 8px; border-top:2px solid #14181F; color:#42474F;">${totalOccurrences} ocorrência(s) registrada(s) no período</td>
+      <td style="padding:10px 8px; border-top:2px solid #14181F; text-align:right; color:#065F46; background:#D1FAE5;">${totalTrabalhado} dias</td>
+    </tr>`;
+
+    // 3. Cronograma de Plantões de Domingos e Feriados
+    const WEEKDAY_NAMES = [
+      "Domingo",
+      "Segunda-feira",
+      "Terça-feira",
+      "Quarta-feira",
+      "Quinta-feira",
+      "Sexta-feira",
+      "Sábado",
+    ];
+    const dutiesRowsHtml =
+      filteredDuties.length > 0
+        ? filteredDuties
+            .map((d) => {
+              const isHoliday =
+                d.kind.toLowerCase().includes("feriado") ||
+                d.kind.includes("(");
+              const isAtend = d.kind.toLowerCase().includes("atendimento");
+              const badgeBg = isAtend
+                ? "#EDE9FE"
+                : isHoliday
+                ? "#F5F3FF"
+                : "#FFF7ED";
+              const badgeFg = isAtend
+                ? "#6D28D9"
+                : isHoliday
+                ? "#6D28D9"
+                : "#C2410C";
+              return `<tr>
+                <td style="padding:9px 8px; border-bottom:1px solid #EBEBE6; font-family:Consolas,monospace; font-weight:bold; color:#14181F;">
+                  ${escapeHtml(formatShortDate(d.date))}
+                </td>
+                <td style="padding:9px 8px; border-bottom:1px solid #EBEBE6; color:#6B7280;">
+                  ${escapeHtml(WEEKDAY_NAMES[getWeekday(d.date)])}
+                </td>
+                <td colspan="3" style="padding:9px 8px; border-bottom:1px solid #EBEBE6;">
+                  <span style="background:${badgeBg}; color:${badgeFg}; font-weight:bold; padding:2px 7px; font-size:11px;">
+                    ${escapeHtml(d.kind)}
+                  </span>
+                </td>
+                <td colspan="4" style="padding:9px 8px; border-bottom:1px solid #EBEBE6; font-weight:bold; color:#14181F;">
+                  ${escapeHtml(d.label || "")}
+                </td>
+              </tr>`;
+            })
+            .join("")
+        : `<tr><td colspan="9" style="padding:10px 8px; color:#A3A8B1;">Nenhum plantão registrado no período.</td></tr>`;
+
+    const sectionDutiesHtml = `
+          <tr><td colspan="9" style="padding:12px;"></td></tr>
+          <tr>
+            <td colspan="9" style="padding:11px 10px; font-size:14px; font-weight:bold; color:#FFFFFF; background:#14181F;">
+              3. CRONOGRAMA DE PLANTÕES DE DOMINGOS E FERIADOS (${filteredDuties.length})
+            </td>
+          </tr>
+          <tr style="background:#F3F2ED; color:#8A8F98; font-size:10.5px; font-weight:bold; text-transform:uppercase;">
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:left;">DATA</th>
+            <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:left;">DIA DA SEMANA</th>
+            <th colspan="3" style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:left;">MODALIDADE DO PLANTÃO / TROCA</th>
+            <th colspan="4" style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:left;">EQUIPE / COLABORADORES ESCALADOS</th>
+          </tr>
+          ${dutiesRowsHtml}`;
+
     const excelHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
       <head>
         <meta charset="UTF-8" />
@@ -1337,7 +1511,7 @@ export default function AdminView({
           <x:ExcelWorkbook>
             <x:ExcelWorksheets>
               <x:ExcelWorksheet>
-                <x:Name>Relatorio Funcionarios</x:Name>
+                <x:Name>Folha Geral RH</x:Name>
                 <x:WorksheetOptions>
                   <x:DisplayGridlines/>
                 </x:WorksheetOptions>
@@ -1350,10 +1524,22 @@ export default function AdminView({
       <body style="font-family: Inter, Calibri, Arial, sans-serif;">
         <table border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse; width:100%;">
           <tr>
-            <td colspan="9" style="padding:12px 8px; font-size:16px; font-weight:bold; color:#14181F; background:#FBFAF7; border-bottom:2px solid #14181F;">
-              Relatório Individual por Funcionário — ${escapeHtml(
+            <td colspan="9" style="padding:14px 10px; font-size:17px; font-weight:bold; color:#14181F; background:#FBFAF7; border-bottom:3px solid #10B981;">
+              RELATÓRIO UNIFICADO DE FECHAMENTO RH — ${escapeHtml(
                 reportPeriodInfo.title
-              )} (${filteredEmployeeReport.length})
+              )}
+            </td>
+          </tr>
+          <tr>
+            <td colspan="9" style="padding:8px 10px; font-size:11.5px; color:#42474F; background:#F3F2ED; border-bottom:1px solid #EBEBE6;">
+              <b>Resumo do Período:</b> ${totalEmps} colaboradores · <b>${totalNormais}</b> dias normais · <b>${totalPlantDom}</b> plantões domingo · <b>${totalPlantFer}</b> plantões feriado · <b>+${totalAdicionais}</b> dias adicionais · <b>${totalFeriasAus}d</b> férias/ausências · <b>${totalTrabalhado} dias trabalhados</b>
+            </td>
+          </tr>
+          <tr><td colspan="9" style="padding:8px;"></td></tr>
+          ${section5x2Html}
+          <tr>
+            <td colspan="9" style="padding:11px 10px; font-size:14px; font-weight:bold; color:#FFFFFF; background:#14181F;">
+              2. FOLHA INDIVIDUAL POR FUNCIONÁRIO / EQUIPE (${filteredEmployeeReport.length} COLABORADORES)
             </td>
           </tr>
           <tr style="background:#F3F2ED; color:#8A8F98; font-size:10.5px; font-weight:bold; text-transform:uppercase;">
@@ -1368,6 +1554,8 @@ export default function AdminView({
             <th style="padding:10px 8px; border-bottom:1px solid #EBEBE6; text-align:right;">TOTAL TRABALHADO</th>
           </tr>
           ${rowsHtml}
+          ${employeeTotalsRowHtml}
+          ${sectionDutiesHtml}
         </table>
       </body>
     </html>`;
@@ -1378,11 +1566,11 @@ export default function AdminView({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `relatorio-funcionarios-${reportPeriodInfo.fileSlug}.xls`;
+    a.download = `folha-geral-rh-${reportPeriodInfo.fileSlug}.xls`;
     a.click();
     URL.revokeObjectURL(url);
     notify?.(
-      `Excel (sem valores R$) exportado: relatorio-funcionarios-${reportPeriodInfo.fileSlug}.xls!`
+      `Folha Geral RH exportada: folha-geral-rh-${reportPeriodInfo.fileSlug}.xls!`
     );
   }
 
@@ -3560,31 +3748,44 @@ export default function AdminView({
             0
           );
 
+          const totalNormais = filteredEmployeeReport.reduce(
+            (acc, e) => acc + e.diasNormais,
+            0
+          );
+          const totalFolgas = filteredEmployeeReport.reduce(
+            (acc, e) => acc + e.folgas,
+            0
+          );
+          const totalTrabalhadoGeral = filteredEmployeeReport.reduce(
+            (acc, e) => acc + e.totalTrabalhado,
+            0
+          );
+
           const REPORT_VIEWS = [
             {
+              id: "todos",
+              label: "Visão Completa RH (Tudo em 1 Só Lugar)",
+              badge: `${totalEmps} colab.`,
+            },
+            {
+              id: "escala5x2",
+              label: "1. Só Escala 5x2 (Grupos A e B)",
+              badge: `${rotation5x2Report.weeks.length} sem.`,
+            },
+            {
               id: "funcionarios",
-              label: "1. Folha por Funcionário",
+              label: "2. Só Folha Individual",
               badge: totalEmps,
             },
             {
               id: "plantoes",
-              label: "2. Só Plantões e Feriados",
+              label: "3. Só Plantões e Feriados",
               badge: filteredDuties.length,
             },
             {
-              id: "escala5x2",
-              label: "3. Escala 5x2 (Grupos A e B)",
-              badge: `${rotation5x2Report.weeks.length} sem.`,
-            },
-            {
               id: "ocorrencias",
-              label: "4. Diário de Ocorrências",
+              label: "4. Só Diário de Ocorrências",
               badge: allOccurrencesCount,
-            },
-            {
-              id: "todos",
-              label: "Ver Tudo na Mesma Tela",
-              badge: null,
             },
           ];
 
@@ -3685,63 +3886,34 @@ export default function AdminView({
                   </div>
                 </div>
 
-                {/* HR Quick Action Export Cards (3 Clear Excel Downloads + Print/CSV) */}
+                {/* HR Quick Action Export Card (Folha Geral RH .xls + Print/CSV) */}
                 <div className="py-4 border-b border-[#EBEBE6]">
                   <div className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#8A8F98] mb-2.5">
-                    EXPORTAÇÃO RÁPIDA DE PLANILHAS PARA O RH (EXCEL .XLS SEM
+                    EXPORTAÇÃO RÁPIDA DE PLANILHA PARA O RH (EXCEL .XLS SEM
                     VALORES EM R$)
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <button
                       type="button"
                       onClick={handleExportEmployeeExcelNoValues}
-                      className="p-3 rounded-2xl bg-[#ECFDF5] border border-[#10B981]/30 hover:bg-[#D1FAE5] transition text-left flex items-start justify-between gap-2 group"
+                      className="p-3.5 rounded-2xl bg-[#ECFDF5] border border-[#10B981]/30 hover:bg-[#D1FAE5] transition text-left flex items-center justify-between gap-3 group shadow-sm"
                     >
                       <div>
-                        <div className="text-[13px] font-bold text-[#065F46] flex items-center gap-1.5">
-                          <Download className="w-3.5 h-3.5 shrink-0" />
+                        <div className="text-[13.5px] font-bold text-[#065F46] flex items-center gap-1.5">
+                          <Download className="w-4 h-4 shrink-0" />
                           <span>1. Folha Geral RH (.xls)</span>
                         </div>
-                        <div className="text-[11px] text-[#047857] mt-0.5">
-                          Dias normais, plantões, férias, trocas e histórico sem
-                          R$
+                        <div className="text-[11.5px] text-[#047857] mt-0.5">
+                          1º Escala 5x2 (quem trabalhou em qual escala) + 2º
+                          Folha individual com totais + 3º Plantões (sem R$)
                         </div>
                       </div>
+                      <span className="px-3 py-1.5 rounded-full bg-[#065F46] text-white text-[11px] font-bold shrink-0">
+                        Baixar .xls
+                      </span>
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={handleExportDutiesAndHolidaysExcel}
-                      className="p-3 rounded-2xl bg-[#F5F3FF] border border-[#8B5CF6]/30 hover:bg-[#EDE9FE] transition text-left flex items-start justify-between gap-2 group"
-                    >
-                      <div>
-                        <div className="text-[13px] font-bold text-[#6D28D9] flex items-center gap-1.5">
-                          <Download className="w-3.5 h-3.5 shrink-0" />
-                          <span>2. Só Plantões e Feriados (.xls)</span>
-                        </div>
-                        <div className="text-[11px] text-[#5B21B6] mt-0.5">
-                          Domingos, feriados, dias adicionais e cronograma
-                        </div>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleExport5x2Excel}
-                      className="p-3 rounded-2xl bg-[#EFF6FF] border border-[#3B82F6]/30 hover:bg-[#DBEAFE] transition text-left flex items-start justify-between gap-2 group"
-                    >
-                      <div>
-                        <div className="text-[13px] font-bold text-[#1D4ED8] flex items-center gap-1.5">
-                          <Download className="w-3.5 h-3.5 shrink-0" />
-                          <span>3. Escala 5x2 Grupos A/B (.xls)</span>
-                        </div>
-                        <div className="text-[11px] text-[#1E40AF] mt-0.5">
-                          Rodízio semanal Seg–Sex vs Ter–Sáb e sábados
-                        </div>
-                      </div>
-                    </button>
-
-                    <div className="p-3 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6] flex flex-col justify-between gap-2">
+                    <div className="p-3.5 rounded-2xl bg-[#FBFAF7] border border-[#EBEBE6] flex flex-col justify-between gap-2">
                       <div className="text-[11px] font-semibold text-[#42474F]">
                         Outros formatos e Impressão
                       </div>
@@ -4028,33 +4200,30 @@ export default function AdminView({
                 </div>
               </div>
 
-              {/* Card 0: Relatório da Escala 5x2 — Rodízio Semanal das Equipes Grupo A e Grupo B (Table layout identical to Excel) */}
-              {(reportSubView === "escala5x2" || reportSubView === "todos") && (
+              {/* Card 0: 1º SEÇÃO — Relatório da Escala 5x2 (Quem trabalhou em qual escala) */}
+              {(reportSubView === "funcionarios" ||
+                reportSubView === "escala5x2" ||
+                reportSubView === "todos") && (
                 <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
             <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
               <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#14181F] text-white text-[10px] font-bold uppercase tracking-wider mb-1">
+                  <span>PARTE 1 · QUEM TRABALHOU EM QUAL ESCALA (5X2)</span>
+                </div>
                 <h2 className="font-heading text-[18px] font-bold text-[#14181F]">
-                  Relatório da Escala 5x2 (Rodízio Grupos A e B: Segunda–Sexta vs
+                  Escala 5x2 — Rodízio Semanal Grupos A e B (Segunda–Sexta vs
                   Terça–Sábado) — {reportPeriodInfo.title}
                 </h2>
                 <p className="text-[12.5px] text-[#6B7280] mt-0.5">
-                  Tabela semana a semana mostrando qual grupo trabalhou de
-                  Segunda a Sexta (folga Sábado e Domingo) e qual trabalhou de
-                  Terça a Sábado (folga Domingo e Segunda).
+                  Consulte abaixo quais equipes trabalharam de Segunda a Sexta
+                  (folga Sábado e Domingo) e quais trabalharam de Terça a Sábado
+                  (folga Domingo e Segunda) em cada semana.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleExport5x2Excel}
-                className="h-9 px-4 rounded-full bg-[#3B82F6] text-white text-[12.5px] font-semibold hover:bg-[#2563EB] transition inline-flex items-center gap-1.5 shadow-sm no-print"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Baixar Excel Escala 5x2 (.xls)</span>
-              </button>
             </div>
 
             {/* Tabela 1: Semana | Turno Segunda a Sexta | Turno Terça a Sábado (Igual à planilha Excel) */}
-            <div className="overflow-x-auto mb-6">
+            <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-[13px]">
                 <thead>
                   <tr className="border-b border-[#EBEBE6] bg-[#F3F2ED] text-[10.5px] font-bold uppercase tracking-[0.16em] text-[#8A8F98]">
@@ -4124,8 +4293,9 @@ export default function AdminView({
               </table>
             </div>
 
-            {/* Tabela 2: Detalhamento 5x2 por Equipe (Grupo A e Grupo B) */}
-            <div>
+            {/* Tabela 2: Detalhamento 5x2 por Equipe (Somente quando focado na aba 5x2) */}
+            {reportSubView === "escala5x2" && (
+            <div className="mt-6">
               <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#8A8F98] mb-2.5">
                 Detalhamento 5x2 por Equipe (Grupo A e Grupo B)
               </div>
@@ -4233,17 +4403,21 @@ export default function AdminView({
                 </table>
               </div>
             </div>
+            )}
           </div>
               )}
 
-              {/* Card 2: Relatório Individual por Funcionário + Cálculo Financeiro de Diárias e Detalhamento */}
+              {/* Card 2: 2ª SEÇÃO — Relatório Individual por Funcionário / Equipe */}
               {(reportSubView === "funcionarios" ||
                 reportSubView === "todos") && (
                 <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
                     <div>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#10B981]/15 text-[#065F46] text-[10px] font-bold uppercase tracking-wider mb-1">
+                        <span>PARTE 2 · FOLHA DE PONTO INDIVIDUAL E OCORRÊNCIAS POR COLABORADOR</span>
+                      </div>
                       <div className="flex flex-wrap items-center gap-2.5">
-                        <h2 className="font-heading text-[17px] font-bold text-[#14181F]">
+                        <h2 className="font-heading text-[18px] font-bold text-[#14181F]">
                           Folha Individual por Funcionário —{" "}
                           {reportPeriodInfo.title} (
                           {filteredEmployeeReport.length})
@@ -4254,7 +4428,7 @@ export default function AdminView({
                           className="h-8 px-3.5 rounded-full bg-[#10B981]/15 text-[#065F46] border border-[#10B981]/30 text-[12px] font-semibold hover:bg-[#10B981]/25 transition inline-flex items-center gap-1.5 no-print"
                         >
                           <Download className="w-3.5 h-3.5" />
-                          <span>Baixar Excel RH (Sem R$)</span>
+                          <span>Baixar Folha Geral RH (.xls)</span>
                         </button>
                         <button
                           type="button"
@@ -4264,14 +4438,14 @@ export default function AdminView({
                           className="h-8 px-3 rounded-full bg-[#F3F2ED] border border-[#E5E4DF] text-[11.5px] font-semibold text-[#14181F] hover:bg-[#E5E4DF] transition no-print"
                         >
                           {showFinancialInReport
-                            ? "Ocultar Valores (R$)"
-                            : "Mostrar Valores (R$)"}
+                            ? "Ocultar Simulação (R$)"
+                            : "Simular Diárias (R$)"}
                         </button>
                       </div>
                       <p className="text-[12.5px] text-[#6B7280] mt-0.5">
-                        Inclui contagem de dias normais, plantões,{" "}
-                        <strong>dias adicionais trabalhados na folga</strong> e
-                        todas as anotações.
+                        Contagem consolidada de dias normais, plantões,{" "}
+                        <strong>dias adicionais trabalhados na folga</strong>,
+                        férias e todas as trocas detalhadas por data.
                       </p>
                     </div>
                     {showFinancialInReport && (
@@ -4511,13 +4685,75 @@ export default function AdminView({
                     );
                   })}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-[#14181F] bg-[#F3F2ED] font-bold text-[12.5px] text-[#14181F]">
+                    <td className="py-3 px-2.5">
+                      TOTAL CONSOLIDADO ({totalEmps} colaboradores)
+                    </td>
+                    <td className="py-3 px-2.5 text-center tabular-nums">
+                      {totalNormais}
+                    </td>
+                    <td className="py-3 px-2.5 text-center tabular-nums text-[#C2410C]">
+                      {totalPlantoesDom}
+                    </td>
+                    <td className="py-3 px-2.5 text-center tabular-nums text-[#6D28D9]">
+                      {totalPlantoesFer}
+                    </td>
+                    <td className="py-3 px-2.5 text-center tabular-nums text-[#1D4ED8]">
+                      +{totalDiasAdicionais}
+                    </td>
+                    <td className="py-3 px-2.5 text-center tabular-nums text-[#854D0E]">
+                      {totalFeriasAus}d
+                    </td>
+                    <td className="py-3 px-2.5 text-center tabular-nums text-[#42474F]">
+                      {totalFolgas}
+                    </td>
+                    <td className="py-3 px-2.5 text-[11.5px] font-semibold text-[#42474F]">
+                      {allOccurrencesCount} ocorrência(s) registrada(s) no
+                      período
+                    </td>
+                    <td className="py-3 px-2.5 text-right tabular-nums text-[#065F46] whitespace-nowrap">
+                      {totalTrabalhadoGeral} dias
+                    </td>
+                    {showFinancialInReport && (
+                      <td className="py-3 px-2.5 text-right tabular-nums text-[#14181F] whitespace-nowrap">
+                        {filteredEmployeeReport
+                          .reduce((acc, emp) => {
+                            const rNorm = Number(
+                              appState.settings.rate_dia_normal ?? 0
+                            );
+                            const rDom = Number(
+                              appState.settings.rate_plantao_domingo ?? 150
+                            );
+                            const rFer = Number(
+                              appState.settings.rate_plantao_feriado ?? 180
+                            );
+                            const rAdd = Number(
+                              appState.settings.rate_dia_adicional ?? 150
+                            );
+                            return (
+                              acc +
+                              emp.diasNormais * rNorm +
+                              emp.plantoesDomingo * rDom +
+                              emp.plantoesFeriado * rFer +
+                              emp.diasAdicionais * rAdd
+                            );
+                          }, 0)
+                          .toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                      </td>
+                    )}
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
               )}
 
-              {/* Card 2B: Relatório Exclusivo de Plantões (Domingos, Feriados e Dias Adicionais) */}
-              {(reportSubView === "plantoes" || reportSubView === "todos") && (
+              {/* Card 2B: Relatório Exclusivo de Plantões (Somente quando clicado no filtro Só Plantões) */}
+              {reportSubView === "plantoes" && (
                 <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
             <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-[#EBEBE6]">
               <div>
@@ -4531,14 +4767,6 @@ export default function AdminView({
                   financeiros).
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleExportDutiesAndHolidaysExcel}
-                className="h-9 px-4 rounded-full bg-[#8B5CF6] text-white text-[12.5px] font-semibold hover:bg-[#7C3AED] transition inline-flex items-center gap-1.5 shadow-sm no-print"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Baixar Excel Só Plantões e Feriados</span>
-              </button>
             </div>
 
             <div className="overflow-x-auto">
@@ -4665,97 +4893,130 @@ export default function AdminView({
           </div>
               )}
 
-              {/* Card 3: Histórico Detalhado de Férias, Trocas, Coberturas e Anotações do Período */}
-              {(reportSubView === "ocorrencias" ||
-                reportSubView === "todos") && (
-                <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
-            <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-1">
-              Histórico Detalhado de Férias, Trocas, Coberturas e Observações —{" "}
-              {reportPeriodInfo.title}
-            </h2>
-            <p className="text-[12.5px] text-[#6B7280] mb-3">
-              Todas as ocorrências, substituições e motivos registrados para os
-              funcionários filtrados.
-            </p>
-            <div className="divide-y divide-[#F2F1EC]">
-              {filteredEmployeeReport
-                .flatMap((emp) =>
-                  (emp.occurrences || []).map((occ) => ({
-                    ...occ,
-                    empName: emp.name,
-                    teamName: emp.teamName,
-                  }))
-                )
-                .sort((a, b) => a.date.localeCompare(b.date))
-                .map((item, idx) => (
-                  <div
-                    key={`${item.date}-${item.empName}-${idx}`}
-                    className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[13px]"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono font-semibold text-[#14181F] tabular-nums">
-                        {formatShortDate(item.date)}
-                      </span>
-                      <span className="font-bold text-[#14181F]">
-                        {item.empName}
-                      </span>
-                      <span className="text-[11.5px] text-[#8A8F98]">
-                        ({item.teamName})
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                          item.color === "domingo"
-                            ? "bg-[#F97316]/15 text-[#C2410C]"
-                            : item.color === "feriado"
-                            ? "bg-[#8B5CF6]/15 text-[#6D28D9]"
-                            : item.color === "adicional"
-                            ? "bg-[#3B82F6]/15 text-[#1D4ED8]"
-                            : item.color === "ferias" ||
-                              item.color === "ausencia"
-                            ? "bg-[#EAB308]/25 text-[#854D0E]"
-                            : "bg-[#F3F2ED] text-[#42474F]"
-                        }`}
-                      >
-                        {item.badge}
-                      </span>
+              {/* Card 3 e 4 Lado a Lado na Visão Completa RH: Cronograma de Plantões + Linha do Tempo de Ocorrências */}
+              <div
+                className={`grid grid-cols-1 ${
+                  reportSubView === "todos" ? "xl:grid-cols-2" : ""
+                } gap-4`}
+              >
+                {/* Card 4: Cronograma de Plantões do Período */}
+                {(reportSubView === "plantoes" || reportSubView === "todos") && (
+                  <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#F97316]/15 text-[#C2410C] text-[10px] font-bold uppercase tracking-wider mb-1">
+                      <span>PARTE 3 · PLANTÕES DE DOMINGOS E FERIADOS</span>
                     </div>
-                    <div className="text-[12.5px] text-[#42474F]">
-                      {item.description}
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
-              )}
-
-              {/* Card 4: Plantões do período */}
-              {(reportSubView === "plantoes" || reportSubView === "todos") && (
-                <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
-                  <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-3">
-                    Cronograma de Plantões do Período ({filteredDuties.length})
-                  </h2>
-                  <div className="divide-y divide-[#F2F1EC]">
-                    {filteredDuties.map((d, i) => (
-                      <div
-                        key={`${d.date}-${i}`}
-                        className="py-2.5 flex items-center justify-between text-[13px]"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="font-mono font-semibold text-[#14181F] tabular-nums">
-                            {formatShortDate(d.date)}
-                          </span>
-                          <span className="px-2.5 py-0.5 rounded-full bg-[#F3F2ED] text-[11.5px] font-medium text-[#42474F]">
-                            {d.kind}
-                          </span>
+                    <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-1">
+                      Cronograma de Plantões do Período ({filteredDuties.length})
+                    </h2>
+                    <p className="text-[12.5px] text-[#6B7280] mb-3">
+                      Lista oficial por data com as duplas/colaboradores que
+                      cumpriram plantão ou troca.
+                    </p>
+                    <div className="divide-y divide-[#F2F1EC]">
+                      {filteredDuties.length > 0 ? (
+                        filteredDuties.map((d, i) => (
+                          <div
+                            key={`${d.date}-${i}`}
+                            className="py-2.5 flex flex-wrap items-center justify-between gap-2 text-[13px]"
+                          >
+                            <div className="flex flex-wrap items-center gap-2.5">
+                              <span className="font-mono font-semibold text-[#14181F] tabular-nums">
+                                {formatShortDate(d.date)}
+                              </span>
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                                  d.kind.toLowerCase().includes("feriado")
+                                    ? "bg-[#8B5CF6]/15 text-[#6D28D9]"
+                                    : d.kind
+                                        .toLowerCase()
+                                        .includes("atendimento")
+                                    ? "bg-[#3B82F6]/15 text-[#1D4ED8]"
+                                    : "bg-[#F97316]/15 text-[#C2410C]"
+                                }`}
+                              >
+                                {d.kind}
+                              </span>
+                            </div>
+                            <span className="font-bold text-[#14181F]">
+                              {d.label}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="py-4 text-[12.5px] text-[#A3A8B1]">
+                          Nenhum plantão registrado para o filtro selecionado.
                         </div>
-                        <span className="font-semibold text-[#14181F]">
-                          {d.label}
-                        </span>
-                      </div>
-                    ))}
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+
+                {/* Card 3: Histórico Detalhado de Férias, Trocas, Coberturas e Anotações do Período */}
+                {(reportSubView === "ocorrencias" ||
+                  reportSubView === "todos") && (
+                  <div className="bg-white border border-[#EBEBE6] rounded-[18px] p-4 sm:p-5 shadow-[0_1px_2px_rgba(20,24,31,0.04)]">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#8B5CF6]/15 text-[#6D28D9] text-[10px] font-bold uppercase tracking-wider mb-1">
+                      <span>PARTE 4 · DIÁRIO CRONOLÓGICO DE OCORRÊNCIAS</span>
+                    </div>
+                    <h2 className="font-heading text-[17px] font-bold text-[#14181F] mb-1">
+                      Linha do Tempo de Trocas, Férias e Observações (
+                      {allOccurrencesCount})
+                    </h2>
+                    <p className="text-[12.5px] text-[#6B7280] mb-3">
+                      Todas as ocorrências, substituições e motivos registrados
+                      em ordem de data.
+                    </p>
+                    <div className="divide-y divide-[#F2F1EC]">
+                      {filteredEmployeeReport
+                        .flatMap((emp) =>
+                          (emp.occurrences || []).map((occ) => ({
+                            ...occ,
+                            empName: emp.name,
+                            teamName: emp.teamName,
+                          }))
+                        )
+                        .sort((a, b) => a.date.localeCompare(b.date))
+                        .map((item, idx) => (
+                          <div
+                            key={`${item.date}-${item.empName}-${idx}`}
+                            className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[13px]"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-mono font-semibold text-[#14181F] tabular-nums">
+                                {formatShortDate(item.date)}
+                              </span>
+                              <span className="font-bold text-[#14181F]">
+                                {item.empName}
+                              </span>
+                              <span className="text-[11.5px] text-[#8A8F98]">
+                                ({item.teamName})
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                                  item.color === "domingo"
+                                    ? "bg-[#F97316]/15 text-[#C2410C]"
+                                    : item.color === "feriado"
+                                    ? "bg-[#8B5CF6]/15 text-[#6D28D9]"
+                                    : item.color === "adicional"
+                                    ? "bg-[#3B82F6]/15 text-[#1D4ED8]"
+                                    : item.color === "ferias" ||
+                                      item.color === "ausencia"
+                                    ? "bg-[#EAB308]/25 text-[#854D0E]"
+                                    : "bg-[#F3F2ED] text-[#42474F]"
+                                }`}
+                              >
+                                {item.badge}
+                              </span>
+                            </div>
+                            <div className="text-[12.5px] text-[#42474F]">
+                              {item.description}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })()}
