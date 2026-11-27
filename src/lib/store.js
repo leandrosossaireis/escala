@@ -14,12 +14,114 @@ const AUTH_SESSION_KEY = "escala_facil_pro_admin_session";
 const ADMIN_AUTH_KEY = "escala_facil_pro_admin_cred_v2";
 const GITHUB_SYNC_KEY = "escala_facil_pro_github_sync";
 
+// Salted SHA-256 hash of the default master password ("escala_pro_salt_v1:" + password)
+// Ensures the plaintext password is never exposed in the source code or JS bundle.
+const PASSWORD_SALT = "escala_pro_salt_v1:";
+const DEFAULT_ADMIN_PASSWORD_HASH =
+  "94f051c85fb236647fd83ef4fdba506704e84c527a116d642341502472219313";
+
+export async function hashPassword(password) {
+  const input = `${PASSWORD_SALT}${String(password)}`;
+  if (typeof crypto !== "undefined" && crypto.subtle) {
+    const data = new TextEncoder().encode(input);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+  // Pure-JS SHA-256 fallback for non-secure HTTP local network origins
+  return sha256Fallback(input);
+}
+
+function sha256Fallback(ascii) {
+  function rightRotate(value, amount) {
+    return (value >>> amount) | (value << (32 - amount));
+  }
+  const mathPow = Math.pow;
+  const maxWord = mathPow(2, 32);
+  let result = "";
+  const words = [];
+  const asciiBitLength = ascii.length * 8;
+  let hash = [];
+  const k = [];
+  let primeCounter = 0;
+  const isComposite = {};
+  for (let candidate = 2; primeCounter < 64; candidate++) {
+    if (!isComposite[candidate]) {
+      for (let i = 0; i < 313; i += candidate) {
+        isComposite[i] = candidate;
+      }
+      hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
+      k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+    }
+  }
+  ascii += "\x80";
+  while ((ascii.length % 64) - 56) ascii += "\x00";
+  for (let i = 0; i < ascii.length; i++) {
+    const j = ascii.charCodeAt(i);
+    words[i >> 2] |= j << (((3 - i) % 4) * 8);
+  }
+  words[words.length] = (asciiBitLength / maxWord) | 0;
+  words[words.length] = asciiBitLength;
+  for (let j = 0; j < words.length; ) {
+    const w = words.slice(j, (j += 16));
+    const oldHash = hash.slice(0);
+    for (let i = 0; i < 64; i++) {
+      const w15 = w[i - 15],
+        w2 = w[i - 2];
+      const a = hash[0],
+        e = hash[4];
+      const temp1 =
+        hash[7] +
+        (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) +
+        ((e & hash[5]) ^ (~e & hash[6])) +
+        k[i] +
+        (w[i] =
+          i < 16
+            ? w[i]
+            : (w[i - 16] +
+                (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) +
+                w[i - 7] +
+                (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) |
+              0);
+      const temp2 =
+        (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) +
+        ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+      hash = [(temp1 + temp2) | 0].concat(hash);
+      hash[4] = (hash[4] + temp1) | 0;
+      hash.pop();
+    }
+    for (let i = 0; i < 8; i++) {
+      hash[i] = (hash[i] + oldHash[i]) | 0;
+    }
+  }
+  for (let i = 0; i < 8; i++) {
+    for (let j = 3; j + 1; j--) {
+      const b = (hash[i] >> (j * 8)) & 255;
+      result += (b < 16 ? 0 : "") + b.toString(16);
+    }
+  }
+  return result;
+}
+
 export function normalizeState(parsed) {
+  const rawHolidays = Array.isArray(parsed?.holidays)
+    ? parsed.holidays
+    : INITIAL_HOLIDAYS;
+  const holidays = rawHolidays.map((h) =>
+    h &&
+    typeof h.name === "string" &&
+    h.name.toLowerCase().includes("corpus christi") &&
+    h.type === "facultativo"
+      ? { ...h, type: "municipal" }
+      : h
+  );
+
   return {
     updated_at: parsed?.updated_at || 0,
     settings: { ...DEFAULT_SETTINGS, ...(parsed?.settings || {}) },
     teams: Array.isArray(parsed?.teams) ? parsed.teams : INITIAL_TEAMS,
-    holidays: Array.isArray(parsed?.holidays) ? parsed.holidays : INITIAL_HOLIDAYS,
+    holidays,
     overrides: Array.isArray(parsed?.overrides) ? parsed.overrides : INITIAL_OVERRIDES,
     absences: Array.isArray(parsed?.absences) ? parsed.absences : INITIAL_ABSENCES,
     weekOverrides: Array.isArray(parsed?.weekOverrides) ? parsed.weekOverrides : [],
@@ -116,18 +218,35 @@ export function getAdminCredentials() {
     const raw = localStorage.getItem(ADMIN_AUTH_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed.password) return parsed;
+      if (parsed.passwordHash) {
+        return {
+          email: parsed.email || "Admin",
+          passwordHash: parsed.passwordHash,
+          password: "",
+        };
+      }
+      // Migrate legacy plaintext password in localStorage to SHA-256 hash automatically
+      if (parsed.password) {
+        const migratedHash = sha256Fallback(`${PASSWORD_SALT}${parsed.password}`);
+        const migrated = {
+          email: parsed.email || "Admin",
+          passwordHash: migratedHash,
+        };
+        localStorage.setItem(ADMIN_AUTH_KEY, JSON.stringify(migrated));
+        return { ...migrated, password: "" };
+      }
     }
   } catch {
     // ignore
   }
   return {
     email: "Admin",
-    password: "124362",
+    passwordHash: DEFAULT_ADMIN_PASSWORD_HASH,
+    password: "",
   };
 }
 
-export function verifyAdminLogin(emailInput, passwordInput) {
+export async function verifyAdminLogin(emailInput, passwordInput) {
   const creds = getAdminCredentials();
   const cleanInput = passwordInput.trim();
 
@@ -144,17 +263,25 @@ export function verifyAdminLogin(emailInput, passwordInput) {
     !creds.email ||
     emailInput.trim().toLowerCase() === creds.email.trim().toLowerCase() ||
     emailInput.trim().toLowerCase() === "admin";
-  // Always accept either the saved custom password OR the master password "124362"
+
+  const inputHash = await hashPassword(passwordInput);
+  const cleanInputHash =
+    cleanInput !== passwordInput ? await hashPassword(cleanInput) : inputHash;
+
+  const targetHash = creds.passwordHash || DEFAULT_ADMIN_PASSWORD_HASH;
   const passMatches =
-    passwordInput === creds.password || cleanInput === "124362";
+    inputHash === targetHash ||
+    cleanInputHash === targetHash ||
+    cleanInputHash === DEFAULT_ADMIN_PASSWORD_HASH;
 
   return { valid: userMatches && passMatches, autoConfiguredToken: false };
 }
 
-export function saveAdminCredentials({ email, password }) {
+export async function saveAdminCredentials({ email, password }) {
+  const passwordHash = await hashPassword(password);
   localStorage.setItem(
     ADMIN_AUTH_KEY,
-    JSON.stringify({ email: email.trim(), password })
+    JSON.stringify({ email: email.trim(), passwordHash })
   );
 }
 

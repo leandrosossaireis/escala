@@ -230,14 +230,15 @@ export default function AdminView({
     }
   }
 
-  function handleSaveCredentials(e) {
+  async function handleSaveCredentials(e) {
     e.preventDefault();
     if (!credForm.password || credForm.password.length < 3) {
       notify?.("A senha precisa ter pelo menos 3 caracteres.", "error");
       return;
     }
-    saveAdminCredentials(credForm);
-    notify?.("Credenciais de Administrador atualizadas!");
+    await saveAdminCredentials(credForm);
+    setCredForm((prev) => ({ ...prev, password: "" }));
+    notify?.("Credenciais de Administrador criptografadas e atualizadas!");
   }
 
   function handleSaveGhConfig(e) {

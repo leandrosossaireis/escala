@@ -1176,7 +1176,7 @@ export function generateBrazilianHolidaysForYear(year) {
     { id: `hol-${goodFriday}`, date: goodFriday, name: "Sexta-feira Santa", type: "nacional" },
     { id: `hol-${y}-04-21`, date: `${y}-04-21`, name: "Tiradentes", type: "nacional" },
     { id: `hol-${y}-05-01`, date: `${y}-05-01`, name: "Dia do Trabalho", type: "nacional" },
-    { id: `hol-${corpusChristi}`, date: corpusChristi, name: "Corpus Christi", type: "facultativo" },
+    { id: `hol-${corpusChristi}`, date: corpusChristi, name: "Corpus Christi", type: "municipal" },
     { id: `hol-${y}-07-09`, date: `${y}-07-09`, name: "Revolução Constitucionalista (SP)", type: "estadual" },
     { id: `hol-${y}-09-07`, date: `${y}-09-07`, name: "Independência do Brasil", type: "nacional" },
     { id: `hol-${y}-10-12`, date: `${y}-10-12`, name: "Nossa Senhora Aparecida", type: "nacional" },

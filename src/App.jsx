@@ -138,9 +138,9 @@ export default function App() {
     }
   }
 
-  function handleLoginSubmit(e) {
+  async function handleLoginSubmit(e) {
     e.preventDefault();
-    const result = verifyAdminLogin(loginEmail, loginPassword);
+    const result = await verifyAdminLogin(loginEmail, loginPassword);
 
     if (result.valid) {
       setIsAdmin(true);
